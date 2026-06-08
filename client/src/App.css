@@ -23,7 +23,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   padding: 0 16px;
-  height: 48px;
+  height: 44px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
   gap: 12px;
@@ -31,7 +31,7 @@ html, body, #root {
 }
 
 .app-header .logo {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #1677ff;
   white-space: nowrap;
@@ -45,7 +45,7 @@ html, body, #root {
   outline: none;
   background: transparent;
   padding: 2px 4px;
-  width: 180px;
+  width: 160px;
 }
 
 .app-header .template-name:focus {
@@ -55,15 +55,8 @@ html, body, #root {
 .app-header .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-left: auto;
-}
-
-.app-header .zoom-display {
-  font-size: 12px;
-  color: #8c8c8c;
-  min-width: 50px;
-  text-align: center;
 }
 
 /* ── 主内容区 ── */
@@ -71,4 +64,13 @@ html, body, #root {
   flex: 1;
   display: flex;
   overflow: hidden;
+}
+
+/* ── 底部区域 ── */
+.app-bottom {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid #e8e8e8;
+  background: #fff;
+  flex-shrink: 0;
 }

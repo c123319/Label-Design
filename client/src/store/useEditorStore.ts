@@ -37,6 +37,10 @@ interface EditorState {
   showGrid: boolean;
   toggleGrid: (visible?: boolean) => void;
 
+  // ── 侧栏 ──
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
+
   // ── 页面管理 ──
   pages: ITemplatePage[];
   currentPageIndex: number;
@@ -195,6 +199,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     canvas.renderAll();
   },
+
+  // ── 侧栏 ──
+  sidebarCollapsed: false,
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
   // ── 页面管理 ──
   pages: [createBlankPage(DEFAULT_SIZE.width, DEFAULT_SIZE.height)],
