@@ -66,6 +66,14 @@ html, body, #root {
   overflow: hidden;
 }
 
+.app-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
 /* ── 底部区域 ── */
 .app-bottom {
   display: flex;

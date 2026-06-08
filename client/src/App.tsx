@@ -139,14 +139,14 @@ function App() {
         {/* 主内容 */}
         <div className="app-main">
           <Toolbar />
-          <CanvasEditor />
+          <div className="app-content">
+            <CanvasEditor />
+            <div className="app-bottom">
+              <PageManager />
+              <ZoomBar />
+            </div>
+          </div>
           <PropertyPanel />
-        </div>
-
-        {/* 底部：页面管理 + 缩放 */}
-        <div className="app-bottom">
-          <PageManager />
-          <ZoomBar />
         </div>
 
         {/* 弹窗 */}
