@@ -1,4 +1,6 @@
 import axios from 'axios';
+import type { ITemplate } from '@shared/types/template';
+import type { IApiResponse } from '@shared/types/api';
 
 const api = axios.create({
   baseURL: '/api',
@@ -12,5 +14,55 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// ── 模板 CRUD ──
+export const templateApi = {
+  create: (data: Partial<ITemplate>) =>
+    api.post<unknown, IApiResponse<{ id: string }>>('/templates', data),
+
+  list: () =>
+    api.get<unknown, IApiResponse<ITemplate[]>>('/templates'),
+
+  get: (id: string) =>
+    api.get<unknown, ITemplate>(`/templates/${id}`),
+
+  delete: (id: string) =>
+    api.delete<unknown, IApiResponse<{ success: boolean }>>(`/templates/${id}`),
+};
+
+// ── 文件上传 ──
+export const uploadApi = {
+  uploadData: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post<unknown, IApiResponse<{ fileId: string }>>('/upload/data', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
+// ── 批量生成 ──
+export const batchApi = {
+  generate: (data: { templateId: string; data: Record<string, string | number>[]; exportFormat?: string }) =>
+    api.post<unknown, IApiResponse<{ jobId: string }>>('/batch/generate', data),
+
+  getStatus: (jobId: string) =>
+    api.get<unknown, IApiResponse<{
+      jobId: string;
+      status: string;
+      total: number;
+      completed: number;
+      resultUrl: string | null;
+    }>>(`/batch/status/${jobId}`),
+};
+
+// ── 导出 ──
+export const exportApi = {
+  exportPdf: (data: { templateId: string }) =>
+    api.post<unknown, IApiResponse<{ url: string }>>('/export/pdf', data),
+
+  exportImages: (data: { templateId: string }) =>
+    api.post<unknown, IApiResponse<{ url: string }>>('/export/images', data),
+};
 
 export default api;

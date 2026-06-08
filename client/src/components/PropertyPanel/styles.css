@@ -1,0 +1,61 @@
+.property-panel {
+  width: 280px;
+  border-left: 1px solid #e8e8e8;
+  background: #fff;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.property-panel .panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #bfbfbf;
+  font-size: 14px;
+}
+
+.property-panel .panel-section {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.property-panel .section-title {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-bottom: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-panel .prop-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.property-panel .prop-label {
+  font-size: 12px;
+  color: #595959;
+  min-width: 48px;
+  flex-shrink: 0;
+}
+
+.property-panel .prop-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.property-panel .layer-btns {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.property-panel .layer-btns .ant-btn {
+  font-size: 11px;
+  padding: 0 8px;
+  height: 28px;
+}

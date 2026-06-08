@@ -1,0 +1,48 @@
+.toolbar {
+  width: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  gap: 2px;
+  border-right: 1px solid #e8e8e8;
+  background: #fafafa;
+  overflow-y: auto;
+}
+
+.toolbar .tool-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #595959;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.toolbar .tool-btn:hover {
+  background: #e6f4ff;
+  color: #1677ff;
+}
+
+.toolbar .tool-btn.active {
+  background: #1677ff;
+  color: #fff;
+}
+
+.toolbar .tool-btn.danger:hover {
+  background: #fff1f0;
+  color: #ff4d4f;
+}
+
+.toolbar .divider {
+  width: 32px;
+  height: 1px;
+  background: #e8e8e8;
+  margin: 4px 0;
+}

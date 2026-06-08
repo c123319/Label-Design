@@ -1,0 +1,30 @@
+.data-import-modal .upload-area {
+  margin-bottom: 16px;
+}
+
+.data-import-modal .field-mapping {
+  margin-top: 16px;
+}
+
+.data-import-modal .mapping-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.data-import-modal .mapping-row .mapping-arrow {
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+.data-import-modal .placeholder-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.data-import-modal .placeholder-tags .ant-tag {
+  cursor: pointer;
+}

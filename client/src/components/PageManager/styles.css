@@ -1,0 +1,107 @@
+.page-manager {
+  height: 100px;
+  background: #fafafa;
+  border-top: 1px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.page-manager::-webkit-scrollbar {
+  height: 4px;
+}
+
+.page-manager::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 2px;
+}
+
+.page-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 70px;
+  height: 90px;
+  border: 2px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-thumb:hover {
+  border-color: #4096ff;
+}
+
+.page-thumb.active {
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2);
+}
+
+.page-thumb .page-number {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-top: 2px;
+}
+
+.page-thumb .page-preview {
+  width: 54px;
+  height: 60px;
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #bfbfbf;
+}
+
+.page-thumb .delete-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  color: #fff;
+  border: none;
+  font-size: 10px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.page-thumb:hover .delete-btn {
+  display: flex;
+}
+
+.page-add-btn {
+  flex-shrink: 0;
+  width: 70px;
+  height: 90px;
+  border: 2px dashed #d9d9d9;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #8c8c8c;
+  transition: all 0.2s;
+}
+
+.page-add-btn:hover {
+  border-color: #1677ff;
+  color: #1677ff;
+}
