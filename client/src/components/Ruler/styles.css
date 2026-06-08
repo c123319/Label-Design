@@ -1,0 +1,47 @@
+/* ── 标尺容器 ── */
+.ruler-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── 左上角方块 ── */
+.ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25px;
+  height: 25px;
+  background: #e8e8e8;
+  border-right: 1px solid #c0c0c0;
+  border-bottom: 1px solid #c0c0c0;
+  z-index: 3;
+}
+
+/* ── 水平标尺 ── */
+.ruler-horizontal {
+  position: absolute;
+  top: 0;
+  left: 25px;
+  right: 0;
+  height: 25px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #c0c0c0;
+  z-index: 2;
+}
+
+/* ── 垂直标尺 ── */
+.ruler-vertical {
+  position: absolute;
+  top: 25px;
+  left: 0;
+  width: 25px;
+  bottom: 0;
+  background: #f5f5f5;
+  border-right: 1px solid #c0c0c0;
+  z-index: 2;
+}

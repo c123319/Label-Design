@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
 import ContextMenu from './ContextMenu';
+import Ruler from '@/components/Ruler';
 import './styles.css';
 
 const CanvasEditor: React.FC = () => {
@@ -62,6 +63,17 @@ const CanvasEditor: React.FC = () => {
       useEditorStore.setState({ zoom: newZoom });
       opt.e.preventDefault();
       opt.e.stopPropagation();
+    });
+
+    // 鼠标位置追踪（标尺用）— 存储 clientX/clientY，标尺组件自行换算
+    canvas.on('mouse:move', (opt) => {
+      useEditorStore.getState().setMousePosition({
+        x: opt.e.clientX,
+        y: opt.e.clientY,
+      });
+    });
+    canvas.on('mouse:out', () => {
+      useEditorStore.getState().setMousePosition(null);
     });
 
     // Alt + 拖拽平移
@@ -179,6 +191,7 @@ const CanvasEditor: React.FC = () => {
   return (
     <ContextMenu>
       <div className="canvas-container">
+        <Ruler />
         <div className="canvas-wrapper">
           <div className="canvas-inner" style={{ transform: `translate(-50%, -50%) scale(${zoom})`, transformOrigin: 'center center' }}>
             <canvas ref={canvasElRef} />

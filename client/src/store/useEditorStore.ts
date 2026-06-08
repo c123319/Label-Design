@@ -59,6 +59,10 @@ interface EditorState {
   zoom: number;
   setZoom: (zoom: number) => void;
 
+  // ── 鼠标位置（标尺用） ──
+  mousePosition: { x: number; y: number } | null;
+  setMousePosition: (pos: { x: number; y: number } | null) => void;
+
   // ── 数据导入 ──
   importedData: Record<string, string | number>[];
   fieldMapping: Record<string, string>;
@@ -256,6 +260,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     set({ zoom });
   },
+
+  // ── 鼠标位置 ──
+  mousePosition: null,
+  setMousePosition: (mousePosition) => set({ mousePosition }),
 
   // ── 数据导入 ──
   importedData: [],
