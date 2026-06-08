@@ -244,11 +244,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setZoom: (zoom) => {
     const { canvas } = get();
     if (canvas) {
-      canvas.setZoom(zoom);
-      canvas.setDimensions(
-        { width: canvas.getWidth() * (zoom / get().zoom), height: canvas.getHeight() * (zoom / get().zoom) },
-        { cssOnly: true },
-      );
+      // 仅用 Fabric.js viewportTransform，不做 CSS 尺寸变更
+      const vpt = canvas.viewportTransform!;
+      const centerX = canvas.getWidth() / 2;
+      const centerY = canvas.getHeight() / 2;
+      canvas.zoomToPoint(new fabric.Point(centerX, centerY), zoom);
     }
     set({ zoom });
   },

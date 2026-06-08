@@ -23,7 +23,11 @@ const ZoomBar: React.FC = () => {
     if (!container) return;
     const scaleX = (container.clientWidth - 40) / templateSize.width;
     const scaleY = (container.clientHeight - 40) / templateSize.height;
-    setZoom(Math.round(Math.min(scaleX, scaleY, 1) * 100) / 100);
+    const zoom = Math.round(Math.min(scaleX, scaleY, 1) * 100) / 100;
+    const panX = (container.clientWidth - templateSize.width * zoom) / 2;
+    const panY = (container.clientHeight - templateSize.height * zoom) / 2;
+    canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
+    setZoom(zoom);
   }, [canvas, templateSize, setZoom]);
 
   const handleEditSubmit = useCallback(() => {

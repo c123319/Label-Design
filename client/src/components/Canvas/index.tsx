@@ -8,12 +8,30 @@ import './styles.css';
 /** 根据缩放级别自适应网格间距（px） */
 function getAdaptiveGridSize(zoom: number): number {
   const PX_PER_MM = 300 / 25.4;
-  // 目标：网格在屏幕上的间距大约 50~100px
   const candidates = [PX_PER_MM * 1, PX_PER_MM * 2, PX_PER_MM * 5, PX_PER_MM * 10, PX_PER_MM * 20, PX_PER_MM * 50];
   for (const size of candidates) {
     if (size * zoom >= 40) return size;
   }
   return PX_PER_MM * 100;
+}
+
+/** 计算初始 fit zoom 并居中画布内容 */
+function fitCanvasToContainer(canvas: fabric.Canvas) {
+  const el = canvas.getElement();
+  const container = el?.parentElement?.parentElement;
+  if (!container) return;
+
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  const tw = canvas.getWidth();
+  const th = canvas.getHeight();
+
+  const zoom = Math.min((cw - 40) / tw, (ch - 40) / th, 1);
+  const panX = (cw - tw * zoom) / 2;
+  const panY = (ch - th * zoom) / 2;
+
+  canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
+  useEditorStore.setState({ zoom });
 }
 
 const CanvasEditor: React.FC = () => {
@@ -22,7 +40,7 @@ const CanvasEditor: React.FC = () => {
 
   const {
     setCanvas, setActiveObject, setActiveObjects,
-    templateSize, zoom, pages, currentPageIndex,
+    templateSize, pages, currentPageIndex,
     showGrid, saveHistory,
   } = useEditorStore();
 
@@ -57,19 +75,16 @@ const CanvasEditor: React.FC = () => {
       const gridSize = getAdaptiveGridSize(fabricZoom);
 
       ctx.save();
-      // 应用 viewport transform，在画布坐标系中绘制
       ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
 
       ctx.strokeStyle = '#e8e8e8';
-      ctx.lineWidth = 1 / fabricZoom; // 反向缩放，保持视觉线宽一致
+      ctx.lineWidth = 1 / fabricZoom;
       ctx.beginPath();
 
-      // 竖线
       for (let x = 0; x <= canvasWidth; x += gridSize) {
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvasHeight);
       }
-      // 横线
       for (let y = 0; y <= canvasHeight; y += gridSize) {
         ctx.moveTo(0, y);
         ctx.lineTo(canvasWidth, y);
@@ -98,7 +113,7 @@ const CanvasEditor: React.FC = () => {
     canvas.on('object:added', () => saveHistory());
     canvas.on('object:removed', () => saveHistory());
 
-    // 鼠标滚轮缩放
+    // 鼠标滚轮缩放 — 仅用 Fabric.js viewportTransform，无 CSS 变换
     canvas.on('mouse:wheel', (opt) => {
       const delta = opt.e.deltaY;
       let newZoom = canvas.getZoom();
@@ -110,7 +125,7 @@ const CanvasEditor: React.FC = () => {
       opt.e.stopPropagation();
     });
 
-    // 鼠标位置追踪（标尺用）— 存储 clientX/clientY，标尺组件自行换算
+    // 鼠标位置追踪（标尺用）
     canvas.on('mouse:move', (opt) => {
       useEditorStore.getState().setMousePosition({
         x: opt.e.clientX,
@@ -154,12 +169,14 @@ const CanvasEditor: React.FC = () => {
     canvasRef.current = canvas;
     setCanvas(canvas);
 
-    // 加载当前页数据
+    // 加载当前页数据，加载完成后 fit to container
     const page = pages[currentPageIndex];
     if (page && page.objects && page.objects.length > 0) {
       canvas.loadFromJSON({ objects: page.objects, background: page.background || '#ffffff' }, () => {
-        canvas.renderAll();
+        fitCanvasToContainer(canvas);
       });
+    } else {
+      fitCanvasToContainer(canvas);
     }
 
     return canvas;
@@ -177,14 +194,14 @@ const CanvasEditor: React.FC = () => {
     };
   }, [initCanvas]);
 
-  // 模板尺寸变化时重新设置
+  // 模板尺寸变化时重新设置并重新 fit
   useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.setDimensions({
         width: templateSize.width,
         height: templateSize.height,
       });
-      canvasRef.current.renderAll();
+      fitCanvasToContainer(canvasRef.current);
     }
   }, [templateSize]);
 
@@ -200,9 +217,7 @@ const CanvasEditor: React.FC = () => {
       <div className="canvas-container">
         <Ruler />
         <div className="canvas-wrapper">
-          <div className="canvas-inner" style={{ transform: `translate(-50%, -50%) scale(${zoom})`, transformOrigin: 'center center' }}>
-            <canvas ref={canvasElRef} />
-          </div>
+          <canvas ref={canvasElRef} />
         </div>
       </div>
     </ContextMenu>

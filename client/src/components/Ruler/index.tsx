@@ -65,12 +65,16 @@ function getTickInterval(visualZoom: number): { major: number; minor: number } {
 /**
  * 计算画布坐标 → 标尺像素位置的映射参数
  * 返回 { scale, offset } 使得: rulerPos = canvasCoord * scale + offset
+ *
+ * 统一坐标换算：仅依赖 Fabric.js viewportTransform，不使用 CSS transform。
+ * canvasCoord → canvas内部像素: canvasPixel = canvasCoord * fabricZoom + fabricPan
+ * canvas内部像素 → 屏幕位置:    screenPos = canvasRectOrigin + canvasPixel  (cssScale = 1)
+ * 屏幕位置 → 标尺位置:          rulerPos = screenPos - containerOrigin - RULER_SIZE
  */
 function getCanvasToRulerMapping(
   vpt: number[],
   canvasEl: HTMLCanvasElement,
   containerEl: HTMLElement,
-  fabricCanvas: fabric.Canvas,
   axis: 'x' | 'y',
 ) {
   const canvasRect = canvasEl.getBoundingClientRect();
@@ -78,20 +82,11 @@ function getCanvasToRulerMapping(
 
   const fabricZoom = axis === 'x' ? vpt[0] : vpt[3];
   const fabricPan = axis === 'x' ? vpt[4] : vpt[5];
-  const canvasInternal = axis === 'x' ? fabricCanvas.getWidth() : fabricCanvas.getHeight();
-  const canvasVisual = axis === 'x' ? canvasRect.width : canvasRect.height;
   const canvasVisualOrigin = axis === 'x' ? canvasRect.left : canvasRect.top;
   const containerOrigin = axis === 'x' ? containerRect.left : containerRect.top;
 
-  // CSS 缩放因子
-  const cssScale = canvasVisual / canvasInternal;
-
-  // canvasCoord → 标尺像素位置:
-  // 1) canvasCoord → canvas内部像素: canvasPixel = canvasCoord * fabricZoom + fabricPan
-  // 2) canvas内部像素 → 屏幕位置: screenPos = canvasVisualOrigin + canvasPixel * cssScale
-  // 3) 屏幕位置 → 标尺位置: rulerPos = screenPos - containerOrigin - RULER_SIZE
-  const scale = fabricZoom * cssScale;
-  const offset = canvasVisualOrigin + fabricPan * cssScale - containerOrigin - RULER_SIZE;
+  const scale = fabricZoom;
+  const offset = canvasVisualOrigin + fabricPan - containerOrigin - RULER_SIZE;
 
   return { scale, offset };
 }
@@ -103,12 +98,11 @@ function drawHorizontalRuler(
   vpt: number[],
   canvasEl: HTMLCanvasElement,
   containerEl: HTMLElement,
-  fabricCanvas: fabric.Canvas,
   bounds: { left: number; right: number } | null,
   mouseClientX: number | null,
   containerRect: DOMRect,
 ) {
-  const { scale, offset } = getCanvasToRulerMapping(vpt, canvasEl, containerEl, fabricCanvas, 'x');
+  const { scale, offset } = getCanvasToRulerMapping(vpt, canvasEl, containerEl, 'x');
 
   // 清空
   ctx.fillStyle = BG_COLOR;
@@ -191,12 +185,11 @@ function drawVerticalRuler(
   vpt: number[],
   canvasEl: HTMLCanvasElement,
   containerEl: HTMLElement,
-  fabricCanvas: fabric.Canvas,
   bounds: { top: number; bottom: number } | null,
   mouseClientY: number | null,
   containerRect: DOMRect,
 ) {
-  const { scale, offset } = getCanvasToRulerMapping(vpt, canvasEl, containerEl, fabricCanvas, 'y');
+  const { scale, offset } = getCanvasToRulerMapping(vpt, canvasEl, containerEl, 'y');
 
   ctx.fillStyle = BG_COLOR;
   ctx.fillRect(0, 0, RULER_SIZE, height);
@@ -312,7 +305,7 @@ const Ruler: React.FC = () => {
         if (ctx) {
           ctx.scale(dpr, dpr);
           drawHorizontalRuler(
-            ctx, w, vpt, canvasEl, container, fabricCanvas,
+            ctx, w, vpt, canvasEl, container,
             bounds ? { left: bounds.left, right: bounds.right } : null,
             mousePosition?.x ?? null,
             containerRect,
@@ -333,7 +326,7 @@ const Ruler: React.FC = () => {
         if (ctx) {
           ctx.scale(dpr, dpr);
           drawVerticalRuler(
-            ctx, h, vpt, canvasEl, container, fabricCanvas,
+            ctx, h, vpt, canvasEl, container,
             bounds ? { top: bounds.top, bottom: bounds.bottom } : null,
             mousePosition?.y ?? null,
             containerRect,

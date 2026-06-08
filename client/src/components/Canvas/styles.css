@@ -5,20 +5,6 @@
   background: #f0f0f0;
 }
 
-.canvas-inner {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.canvas-editor {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-}
-
 .canvas-wrapper {
   position: absolute;
   top: 25px;
