@@ -61,6 +61,14 @@ const PropertyPanel: React.FC = () => {
       scaleY: obj.scaleY ?? 1,
       // 下划线
       underline: (obj as fabric.IText).underline ?? false,
+      // 字间距
+      charSpacing: (obj as fabric.IText).charSpacing ?? 0,
+      // 阴影
+      shadow: obj.shadow as fabric.Shadow | null,
+      shadowColor: (obj.shadow as fabric.Shadow)?.color ?? 'rgba(0,0,0,0.3)',
+      shadowBlur: (obj.shadow as fabric.Shadow)?.blur ?? 0,
+      shadowOffsetX: (obj.shadow as fabric.Shadow)?.offsetX ?? 0,
+      shadowOffsetY: (obj.shadow as fabric.Shadow)?.offsetY ?? 0,
     });
   }, [activeObject]);
 
@@ -305,6 +313,20 @@ const PropertyPanel: React.FC = () => {
               />
             </div>
           </div>
+          <div className="prop-row">
+            <span className="prop-label">字间距</span>
+            <div className="prop-field">
+              <InputNumber
+                size="small"
+                min={-200}
+                max={800}
+                step={10}
+                value={objProps.charSpacing as number}
+                onChange={(v) => v !== null && updateProp('charSpacing', v)}
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -402,6 +424,103 @@ const PropertyPanel: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── 阴影 ── */}
+      <div className="panel-section">
+        <div className="section-title">阴影</div>
+        <div className="prop-row">
+          <span className="prop-label">颜色</span>
+          <div className="prop-field">
+            <ColorPicker
+              size="small"
+              value={objProps.shadowColor as string}
+              onChange={(_, hex) => {
+                if (!activeObject || !canvas) return;
+                activeObject.set('shadow', new fabric.Shadow({
+                  color: hex,
+                  blur: objProps.shadowBlur as number,
+                  offsetX: objProps.shadowOffsetX as number,
+                  offsetY: objProps.shadowOffsetY as number,
+                }));
+                canvas.renderAll();
+                refreshProps();
+              }}
+            />
+          </div>
+        </div>
+        <div className="prop-row">
+          <span className="prop-label">模糊</span>
+          <div className="prop-field">
+            <InputNumber
+              size="small"
+              min={0}
+              max={50}
+              value={objProps.shadowBlur as number}
+              onChange={(v) => {
+                if (v !== null && activeObject && canvas) {
+                  activeObject.set('shadow', new fabric.Shadow({
+                    color: objProps.shadowColor as string,
+                    blur: v,
+                    offsetX: objProps.shadowOffsetX as number,
+                    offsetY: objProps.shadowOffsetY as number,
+                  }));
+                  canvas.renderAll();
+                  refreshProps();
+                }
+              }}
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+        <div className="prop-row">
+          <span className="prop-label">偏移 X</span>
+          <div className="prop-field">
+            <InputNumber
+              size="small"
+              min={-20}
+              max={20}
+              value={objProps.shadowOffsetX as number}
+              onChange={(v) => {
+                if (v !== null && activeObject && canvas) {
+                  activeObject.set('shadow', new fabric.Shadow({
+                    color: objProps.shadowColor as string,
+                    blur: objProps.shadowBlur as number,
+                    offsetX: v,
+                    offsetY: objProps.shadowOffsetY as number,
+                  }));
+                  canvas.renderAll();
+                  refreshProps();
+                }
+              }}
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+        <div className="prop-row">
+          <span className="prop-label">偏移 Y</span>
+          <div className="prop-field">
+            <InputNumber
+              size="small"
+              min={-20}
+              max={20}
+              value={objProps.shadowOffsetY as number}
+              onChange={(v) => {
+                if (v !== null && activeObject && canvas) {
+                  activeObject.set('shadow', new fabric.Shadow({
+                    color: objProps.shadowColor as string,
+                    blur: objProps.shadowBlur as number,
+                    offsetX: objProps.shadowOffsetX as number,
+                    offsetY: v,
+                  }));
+                  canvas.renderAll();
+                  refreshProps();
+                }
+              }}
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* ── 层级控制 ── */}
       <div className="panel-section">

@@ -1,20 +1,23 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
+import ContextMenu from './ContextMenu';
 import './styles.css';
 
 const CanvasEditor: React.FC = () => {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<fabric.Canvas | null>(null);
 
-  const { setCanvas, setActiveObject, templateSize, zoom, pages, currentPageIndex, saveHistory } =
-    useEditorStore();
+  const {
+    setCanvas, setActiveObject, setActiveObjects,
+    templateSize, zoom, pages, currentPageIndex,
+    showGrid, saveHistory,
+  } = useEditorStore();
 
   /** 初始化 Fabric.js 画布 */
   const initCanvas = useCallback(() => {
     if (!canvasElRef.current) return;
 
-    // 销毁旧实例
     if (canvasRef.current) {
       canvasRef.current.dispose();
     }
@@ -28,29 +31,26 @@ const CanvasEditor: React.FC = () => {
     });
 
     // 绘制网格
-    drawGrid(canvas);
+    drawGrid(canvas, showGrid);
 
-    // 监听选中事件
+    // 监听选中事件 — 支持多选
     canvas.on('selection:created', (e) => {
       setActiveObject(e.selected?.[0] ?? null);
+      setActiveObjects(e.selected ?? []);
     });
     canvas.on('selection:updated', (e) => {
       setActiveObject(e.selected?.[0] ?? null);
+      setActiveObjects(e.selected ?? []);
     });
     canvas.on('selection:cleared', () => {
       setActiveObject(null);
+      setActiveObjects([]);
     });
 
     // 对象修改后保存历史
-    canvas.on('object:modified', () => {
-      saveHistory();
-    });
-    canvas.on('object:added', () => {
-      saveHistory();
-    });
-    canvas.on('object:removed', () => {
-      saveHistory();
-    });
+    canvas.on('object:modified', () => saveHistory());
+    canvas.on('object:added', () => saveHistory());
+    canvas.on('object:removed', () => saveHistory());
 
     // 鼠标滚轮缩放
     canvas.on('mouse:wheel', (opt) => {
@@ -109,7 +109,7 @@ const CanvasEditor: React.FC = () => {
   }, [templateSize.width, templateSize.height]);
 
   /** 绘制网格线 */
-  function drawGrid(canvas: fabric.Canvas) {
+  function drawGrid(canvas: fabric.Canvas, visible: boolean) {
     const gridSize = 50;
     const w = canvas.getWidth();
     const h = canvas.getHeight();
@@ -121,6 +121,7 @@ const CanvasEditor: React.FC = () => {
         selectable: false,
         evented: false,
         excludeFromExport: true,
+        visible,
       });
       (line as any)._isGrid = true;
       canvas.add(line);
@@ -133,6 +134,7 @@ const CanvasEditor: React.FC = () => {
         selectable: false,
         evented: false,
         excludeFromExport: true,
+        visible,
       });
       (line as any)._isGrid = true;
       canvas.add(line);
@@ -152,7 +154,7 @@ const CanvasEditor: React.FC = () => {
     };
   }, [initCanvas]);
 
-  // 模板尺寸变化时重新初始化
+  // 模板尺寸变化时重新设置
   useEffect(() => {
     if (canvasRef.current) {
       canvasRef.current.setDimensions({
@@ -163,14 +165,27 @@ const CanvasEditor: React.FC = () => {
     }
   }, [templateSize]);
 
+  // 网格可见性变化
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    canvasRef.current.getObjects().forEach((obj) => {
+      if ((obj as any)._isGrid) {
+        obj.set('visible', showGrid);
+      }
+    });
+    canvasRef.current.renderAll();
+  }, [showGrid]);
+
   return (
-    <div className="canvas-container">
-      <div className="canvas-wrapper">
-        <div className="canvas-inner" style={{ transform: `translate(-50%, -50%) scale(${zoom})`, transformOrigin: 'center center' }}>
-          <canvas ref={canvasElRef} />
+    <ContextMenu>
+      <div className="canvas-container">
+        <div className="canvas-wrapper">
+          <div className="canvas-inner" style={{ transform: `translate(-50%, -50%) scale(${zoom})`, transformOrigin: 'center center' }}>
+            <canvas ref={canvasElRef} />
+          </div>
         </div>
       </div>
-    </div>
+    </ContextMenu>
   );
 };
 

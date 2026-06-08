@@ -15,9 +15,27 @@ interface EditorState {
   canvas: fabric.Canvas | null;
   setCanvas: (canvas: fabric.Canvas | null) => void;
 
-  // ── 选中对象 ──
+  // ── 选中对象（单选 + 多选） ──
   activeObject: fabric.Object | null;
   setActiveObject: (obj: fabric.Object | null) => void;
+  activeObjects: fabric.Object[];
+  setActiveObjects: (objs: fabric.Object[]) => void;
+
+  // ── 剪贴板 ──
+  clipboard: string | null;
+
+  // ── 编辑器操作 ──
+  copySelected: () => void;
+  pasteObject: () => void;
+  duplicateSelected: () => void;
+  selectAll: () => void;
+  deleteSelected: () => void;
+  groupSelected: () => void;
+  ungroupSelected: () => void;
+
+  // ── 网格 ──
+  showGrid: boolean;
+  toggleGrid: (visible?: boolean) => void;
 
   // ── 页面管理 ──
   pages: ITemplatePage[];
@@ -63,6 +81,120 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // ── 选中对象 ──
   activeObject: null,
   setActiveObject: (activeObject) => set({ activeObject }),
+  activeObjects: [],
+  setActiveObjects: (activeObjects) => set({ activeObjects }),
+
+  // ── 剪贴板 ──
+  clipboard: null,
+
+  // ── 编辑器操作 ──
+  copySelected: () => {
+    const { canvas } = get();
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active) return;
+    const json = JSON.stringify(active.toJSON());
+    set({ clipboard: json });
+  },
+
+  pasteObject: () => {
+    const { canvas, clipboard } = get();
+    if (!canvas || !clipboard) return;
+    // 从剪贴板 JSON 加载对象
+    const parsed = JSON.parse(clipboard);
+    const obj = parsed;
+    obj.left = (obj.left || 0) + 20;
+    obj.top = (obj.top || 0) + 20;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const callback: any = (objects: fabric.Object[]) => {
+      objects.forEach((o) => canvas.add(o));
+      if (objects.length === 1) canvas.setActiveObject(objects[0]);
+      canvas.renderAll();
+    };
+    fabric.util.enlivenObjects([obj], callback, '');
+  },
+
+  duplicateSelected: () => {
+    const { canvas } = get();
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active) return;
+    active.clone((cloned: fabric.Object) => {
+      cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
+      canvas.add(cloned);
+      canvas.setActiveObject(cloned);
+      canvas.renderAll();
+    });
+  },
+
+  selectAll: () => {
+    const { canvas } = get();
+    if (!canvas) return;
+    canvas.discardActiveObject();
+    const filtered = canvas.getObjects().filter((obj) => !(obj as any)._isGrid);
+    const sel = new fabric.ActiveSelection(filtered, { canvas });
+    canvas.setActiveObject(sel);
+    canvas.requestRenderAll();
+  },
+
+  deleteSelected: () => {
+    const { canvas } = get();
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active) return;
+    if (active.type === 'activeSelection') {
+      (active as fabric.ActiveSelection).forEachObject((obj) => canvas.remove(obj));
+    } else {
+      canvas.remove(active);
+    }
+    canvas.discardActiveObject();
+    canvas.renderAll();
+  },
+
+  groupSelected: () => {
+    const { canvas } = get();
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active || active.type !== 'activeSelection') return;
+    const group = (active as fabric.ActiveSelection).toGroup();
+    canvas.setActiveObject(group);
+    canvas.renderAll();
+  },
+
+  ungroupSelected: () => {
+    const { canvas } = get();
+    if (!canvas) return;
+    const active = canvas.getActiveObject();
+    if (!active || active.type !== 'group') return;
+    const group = active as fabric.Group;
+    const items = group.getObjects();
+    const groupLeft = active.left || 0;
+    const groupTop = active.top || 0;
+    canvas.remove(active);
+    items.forEach((item: any) => {
+      item.set({
+        left: (item.left || 0) + groupLeft,
+        top: (item.top || 0) + groupTop,
+      });
+      canvas.add(item);
+    });
+    canvas.renderAll();
+  },
+
+  // ── 网格 ──
+  showGrid: true,
+  toggleGrid: (visible) => {
+    const { canvas, showGrid } = get();
+    const newVal = visible !== undefined ? visible : !showGrid;
+    set({ showGrid: newVal });
+    if (!canvas) return;
+    canvas.getObjects().forEach((obj) => {
+      if ((obj as any)._isGrid) {
+        obj.set('visible', newVal);
+      }
+    });
+    canvas.renderAll();
+  },
 
   // ── 页面管理 ──
   pages: [createBlankPage(DEFAULT_SIZE.width, DEFAULT_SIZE.height)],
@@ -133,7 +265,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const json = JSON.stringify(canvas.toJSON());
     const newStack = historyStack.slice(0, historyIndex + 1);
     newStack.push(json);
-    // 最多保留 50 步
     if (newStack.length > 50) newStack.shift();
     set({ historyStack: newStack, historyIndex: newStack.length - 1 });
   },
@@ -161,7 +292,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // ── 导出 / 导入 ──
   exportAsJSON: () => {
     const { canvas, pages, currentPageIndex, templateName, templateSize } = get();
-    // 保存当前页到 pages
     const updatedPages = [...pages];
     if (canvas) {
       const json = canvas.toJSON();

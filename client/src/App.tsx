@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ConfigProvider, Button, Tooltip, Modal, Input, Select, message, InputNumber } from 'antd';
+import { ConfigProvider, Button, Tooltip, Modal, Input, Select, message, InputNumber, Dropdown } from 'antd';
 import {
-  FileOutlined,
   SaveOutlined,
   DownloadOutlined,
   ImportOutlined,
@@ -9,6 +8,8 @@ import {
   ZoomOutOutlined,
   ExpandOutlined,
   PlusOutlined,
+  FolderOpenOutlined,
+  FileImageOutlined,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import CanvasEditor from '@/components/Canvas';
@@ -16,6 +17,7 @@ import Toolbar from '@/components/Toolbar';
 import PropertyPanel from '@/components/PropertyPanel';
 import PageManager from '@/components/PageManager';
 import DataImport from '@/components/DataImport';
+import TemplateManager from '@/components/TemplateManager';
 import { useEditorStore } from '@/store/useEditorStore';
 import { templateApi } from '@/services/api';
 import './App.css';
@@ -33,42 +35,82 @@ const SIZE_PRESETS = [
 function App() {
   const [dataImportOpen, setDataImportOpen] = useState(false);
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
+  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('未命名模板');
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [customWidth, setCustomWidth] = useState(800);
   const [customHeight, setCustomHeight] = useState(600);
 
-  const { templateName, setTemplateName, templateSize, setTemplateSize, zoom, setZoom, canvas, exportAsJSON, activeObject } =
-    useEditorStore();
+  const {
+    templateName, setTemplateName, templateSize, setTemplateSize,
+    zoom, setZoom, canvas, exportAsJSON,
+    copySelected, pasteObject, duplicateSelected, deleteSelected,
+    selectAll, groupSelected, ungroupSelected, undo, redo,
+  } = useEditorStore();
 
   // 键盘快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Delete 删除选中元素
-      if (e.key === 'Delete' && activeObject) {
-        canvas?.remove(activeObject);
-        canvas?.discardActiveObject();
-        canvas?.renderAll();
+      // 如果在输入框内，不拦截
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const store = useEditorStore.getState();
+
+      // Delete 删除
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        store.deleteSelected();
       }
       // Ctrl+Z 撤销
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        useEditorStore.getState().undo();
+        store.undo();
       }
-      // Ctrl+Y / Ctrl+Shift+Z 重做
+      // Ctrl+Y 重做
       if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) {
         e.preventDefault();
-        useEditorStore.getState().redo();
+        store.redo();
       }
       // Ctrl+S 保存
       if (e.ctrlKey && e.key === 's') {
         e.preventDefault();
         handleSave();
       }
+      // Ctrl+C 复制
+      if (e.ctrlKey && e.key === 'c') {
+        e.preventDefault();
+        store.copySelected();
+      }
+      // Ctrl+V 粘贴
+      if (e.ctrlKey && e.key === 'v') {
+        e.preventDefault();
+        store.pasteObject();
+      }
+      // Ctrl+D 快捷复制
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault();
+        store.duplicateSelected();
+      }
+      // Ctrl+A 全选
+      if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        store.selectAll();
+      }
+      // Ctrl+G 组合
+      if (e.ctrlKey && e.key === 'g' && !e.shiftKey) {
+        e.preventDefault();
+        store.groupSelected();
+      }
+      // Ctrl+Shift+G 解组
+      if (e.ctrlKey && e.shiftKey && e.key === 'g') {
+        e.preventDefault();
+        store.ungroupSelected();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canvas, activeObject]);
+  }, []);
 
   /** 新建模板 */
   const handleNewTemplate = useCallback(() => {
@@ -88,7 +130,6 @@ function App() {
       await templateApi.create(template);
       message.success('模板已保存');
     } catch {
-      // 后端可能还没完全实现，降级为本地下载 JSON
       const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -100,47 +141,58 @@ function App() {
     }
   }, [exportAsJSON, templateName]);
 
-  /** 导出为 PNG */
-  const handleExportPNG = useCallback(() => {
+  /** 导出图片 */
+  const handleExport = useCallback((format: 'png' | 'jpg', multiplier: number) => {
     if (!canvas) return;
-    // 临时移除选中框
     const activeObj = canvas.getActiveObject();
     canvas.discardActiveObject();
 
-    const dataURL = canvas.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: 2, // 2x 分辨率
+    // 隐藏网格
+    canvas.getObjects().forEach((obj) => {
+      if ((obj as any)._isGrid) obj.set('visible', false);
     });
 
-    // 恢复选中
+    const dataURL = canvas.toDataURL({
+      format,
+      quality: format === 'jpg' ? 0.92 : 1,
+      multiplier,
+    });
+
+    // 恢复
+    canvas.getObjects().forEach((obj) => {
+      if ((obj as any)._isGrid) obj.set('visible', useEditorStore.getState().showGrid);
+    });
     if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
 
     const a = document.createElement('a');
     a.href = dataURL;
-    a.download = `${templateName}.png`;
+    a.download = `${templateName}.${format}`;
     a.click();
-    message.success('已导出 PNG');
+    message.success(`已导出 ${format.toUpperCase()} (${multiplier}x)`);
   }, [canvas, templateName]);
 
   /** 缩放控制 */
-  const handleZoomIn = useCallback(() => {
-    setZoom(Math.min(zoom + 0.1, 5));
-  }, [zoom, setZoom]);
-
-  const handleZoomOut = useCallback(() => {
-    setZoom(Math.max(zoom - 0.1, 0.1));
-  }, [zoom, setZoom]);
-
+  const handleZoomIn = useCallback(() => setZoom(Math.min(zoom + 0.1, 5)), [zoom, setZoom]);
+  const handleZoomOut = useCallback(() => setZoom(Math.max(zoom - 0.1, 0.1)), [zoom, setZoom]);
   const handleZoomFit = useCallback(() => {
     if (!canvas) return;
     const container = canvas.getElement().parentElement?.parentElement;
     if (!container) return;
     const scaleX = (container.clientWidth - 40) / templateSize.width;
     const scaleY = (container.clientHeight - 40) / templateSize.height;
-    const newZoom = Math.min(scaleX, scaleY, 1);
-    setZoom(Math.round(newZoom * 100) / 100);
+    setZoom(Math.round(Math.min(scaleX, scaleY, 1) * 100) / 100);
   }, [canvas, templateSize, setZoom]);
+
+  /** 导出下拉菜单 */
+  const exportMenuItems = [
+    { key: 'png1x', label: 'PNG 1x', onClick: () => handleExport('png', 1) },
+    { key: 'png2x', label: 'PNG 2x', onClick: () => handleExport('png', 2) },
+    { key: 'png3x', label: 'PNG 3x', onClick: () => handleExport('png', 3) },
+    { type: 'divider' as const },
+    { key: 'jpg1x', label: 'JPG 1x', onClick: () => handleExport('jpg', 1) },
+    { key: 'jpg2x', label: 'JPG 2x', onClick: () => handleExport('jpg', 2) },
+  ];
 
   return (
     <ConfigProvider locale={zhCN}>
@@ -155,35 +207,24 @@ function App() {
           />
           <div className="header-actions">
             <Tooltip title="新建模板">
-              <Button size="small" icon={<PlusOutlined />} onClick={() => setNewTemplateOpen(true)}>
-                新建
-              </Button>
+              <Button size="small" icon={<PlusOutlined />} onClick={() => setNewTemplateOpen(true)}>新建</Button>
+            </Tooltip>
+            <Tooltip title="模板管理">
+              <Button size="small" icon={<FolderOpenOutlined />} onClick={() => setTemplateManagerOpen(true)}>模板</Button>
             </Tooltip>
             <Tooltip title="保存 (Ctrl+S)">
-              <Button size="small" icon={<SaveOutlined />} onClick={handleSave}>
-                保存
-              </Button>
+              <Button size="small" icon={<SaveOutlined />} onClick={handleSave}>保存</Button>
             </Tooltip>
-            <Tooltip title="导出 PNG">
-              <Button size="small" icon={<DownloadOutlined />} onClick={handleExportPNG}>
-                导出
-              </Button>
-            </Tooltip>
+            <Dropdown menu={{ items: exportMenuItems }}>
+              <Button size="small" icon={<DownloadOutlined />}>导出 ▾</Button>
+            </Dropdown>
             <Tooltip title="批量数据导入">
-              <Button size="small" icon={<ImportOutlined />} onClick={() => setDataImportOpen(true)}>
-                数据
-              </Button>
+              <Button size="small" icon={<ImportOutlined />} onClick={() => setDataImportOpen(true)}>数据</Button>
             </Tooltip>
             <span className="zoom-display">{Math.round(zoom * 100)}%</span>
-            <Tooltip title="缩小">
-              <Button size="small" icon={<ZoomOutOutlined />} onClick={handleZoomOut} />
-            </Tooltip>
-            <Tooltip title="适应画布">
-              <Button size="small" icon={<ExpandOutlined />} onClick={handleZoomFit} />
-            </Tooltip>
-            <Tooltip title="放大">
-              <Button size="small" icon={<ZoomInOutlined />} onClick={handleZoomIn} />
-            </Tooltip>
+            <Tooltip title="缩小"><Button size="small" icon={<ZoomOutOutlined />} onClick={handleZoomOut} /></Tooltip>
+            <Tooltip title="适应"><Button size="small" icon={<ExpandOutlined />} onClick={handleZoomFit} /></Tooltip>
+            <Tooltip title="放大"><Button size="small" icon={<ZoomInOutlined />} onClick={handleZoomIn} /></Tooltip>
           </div>
         </header>
 
@@ -197,8 +238,9 @@ function App() {
         {/* 底部页面管理 */}
         <PageManager />
 
-        {/* 数据导入弹窗 */}
+        {/* 弹窗 */}
         <DataImport open={dataImportOpen} onClose={() => setDataImportOpen(false)} />
+        <TemplateManager open={templateManagerOpen} onClose={() => setTemplateManagerOpen(false)} />
 
         {/* 新建模板弹窗 */}
         <Modal
@@ -212,11 +254,7 @@ function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 0' }}>
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>模板名称</label>
-              <Input
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-                placeholder="输入模板名称"
-              />
+              <Input value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} placeholder="输入模板名称" />
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>尺寸预设</label>
@@ -231,23 +269,11 @@ function App() {
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>宽度 (px)</label>
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    min={100}
-                    max={5000}
-                    value={customWidth}
-                    onChange={(v) => v && setCustomWidth(v)}
-                  />
+                  <InputNumber style={{ width: '100%' }} min={100} max={5000} value={customWidth} onChange={(v) => v && setCustomWidth(v)} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>高度 (px)</label>
-                  <InputNumber
-                    style={{ width: '100%' }}
-                    min={100}
-                    max={5000}
-                    value={customHeight}
-                    onChange={(v) => v && setCustomHeight(v)}
-                  />
+                  <InputNumber style={{ width: '100%' }} min={100} max={5000} value={customHeight} onChange={(v) => v && setCustomHeight(v)} />
                 </div>
               </div>
             )}
