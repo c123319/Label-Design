@@ -133,13 +133,11 @@ function App() {
           </div>
         </header>
 
-        {/* 顶部工具栏 */}
-        <TopToolbar />
-
         {/* 主内容 */}
         <div className="app-main">
           <Toolbar />
           <div className="app-content">
+            <TopToolbar />
             <CanvasEditor />
             <div className="app-bottom">
               <PageManager />
