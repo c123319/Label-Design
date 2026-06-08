@@ -95,9 +95,8 @@ function App() {
     if (!canvas) return;
     const activeObj = canvas.getActiveObject();
     canvas.discardActiveObject();
-    canvas.getObjects().forEach((obj) => { if ((obj as any)._isGrid) obj.set('visible', false); });
+    // 动态网格不会出现在 canvas.toDataURL 中，无需特殊处理
     const dataURL = canvas.toDataURL({ format, quality: format === 'jpg' ? 0.92 : 1, multiplier });
-    canvas.getObjects().forEach((obj) => { if ((obj as any)._isGrid) obj.set('visible', useEditorStore.getState().showGrid); });
     if (activeObj) canvas.setActiveObject(activeObj);
     canvas.renderAll();
     const a = document.createElement('a');

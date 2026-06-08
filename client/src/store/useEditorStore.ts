@@ -139,8 +139,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { canvas } = get();
     if (!canvas) return;
     canvas.discardActiveObject();
-    const filtered = canvas.getObjects().filter((obj) => !(obj as any)._isGrid);
-    const sel = new fabric.ActiveSelection(filtered, { canvas });
+    const sel = new fabric.ActiveSelection(canvas.getObjects(), { canvas });
     canvas.setActiveObject(sel);
     canvas.requestRenderAll();
   },
@@ -192,16 +191,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // ── 网格 ──
   showGrid: true,
   toggleGrid: (visible) => {
-    const { canvas, showGrid } = get();
+    const { showGrid } = get();
     const newVal = visible !== undefined ? visible : !showGrid;
     set({ showGrid: newVal });
-    if (!canvas) return;
-    canvas.getObjects().forEach((obj) => {
-      if ((obj as any)._isGrid) {
-        obj.set('visible', newVal);
-      }
-    });
-    canvas.renderAll();
   },
 
   // ── 侧栏 ──

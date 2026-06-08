@@ -16,9 +16,7 @@ const PageManager: React.FC = () => {
       width: canvas.getWidth(),
       height: canvas.getHeight(),
       background: (canvas.backgroundColor as string) || '#ffffff',
-      objects: (json.objects || []).filter(
-        (obj: any) => !(obj as any)._isGrid,
-      ) as any[],
+      objects: (json.objects || []) as any[],
     };
     const { pages, currentPageIndex } = useEditorStore.getState();
     const updated = [...pages];
