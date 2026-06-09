@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { InputNumber, Slider, Select, Button, Tooltip, Segmented, ColorPicker, Input } from 'antd';
+import { InputNumber, Slider, Select, Button, Tooltip, Segmented, ColorPicker, Input, Switch } from 'antd';
+import { PX_PER_MM } from '@/utils/canvasMetrics';
 import {
   BoldOutlined,
   ItalicOutlined,
@@ -36,9 +37,41 @@ const FONT_FAMILIES = [
   { value: 'Courier New, monospace', label: 'Courier New' },
 ];
 
+const pxToMm = (px: number) => Math.round((px / PX_PER_MM) * 10) / 10;
+const mmToPx = (mm: number) => Math.round(mm * PX_PER_MM);
+
 const PropertyPanel: React.FC = () => {
-  const { canvas, activeObject, activeObjects, templateSize, saveHistory } = useEditorStore();
+  const {
+    canvas, activeObject, activeObjects, templateSize, setTemplateSize,
+    pages, currentPageIndex, showGrid, toggleGrid, saveHistory,
+    importedData, fieldMapping,
+  } = useEditorStore();
+  const [activeTab, setActiveTab] = useState<'style' | 'databinding'>('style');
   const [objProps, setObjProps] = useState<Record<string, any>>({});
+
+  const pageBackground = pages[currentPageIndex]?.background || '#ffffff';
+  const isLandscape = templateSize.width >= templateSize.height;
+
+  const updatePageBackground = useCallback((color: string) => {
+    const { pages: p, currentPageIndex: idx } = useEditorStore.getState();
+    const updated = [...p];
+    updated[idx] = { ...updated[idx], background: color };
+    useEditorStore.setState({ pages: updated });
+    canvas?.requestRenderAll();
+  }, [canvas]);
+
+  const updateSizeMm = useCallback((dim: 'width' | 'height', mm: number) => {
+    const px = mmToPx(mm);
+    setTemplateSize({
+      width: dim === 'width' ? px : templateSize.width,
+      height: dim === 'height' ? px : templateSize.height,
+    });
+  }, [setTemplateSize, templateSize.width, templateSize.height]);
+
+  const swapOrientation = useCallback((landscape: boolean) => {
+    if (landscape === isLandscape) return;
+    setTemplateSize({ width: templateSize.height, height: templateSize.width });
+  }, [isLandscape, setTemplateSize, templateSize.width, templateSize.height]);
 
   const hasMultiple = activeObjects.length > 1;
 
@@ -143,22 +176,113 @@ const PropertyPanel: React.FC = () => {
     [activeObject, canvas, refreshProps],
   );
 
-  if (!activeObject) {
-    return (
-      <div className="property-panel">
-        <div className="panel-empty">请选择一个元素</div>
+  const renderCanvasSettings = () => (
+    <div className="panel-section">
+      <div className="section-title">画布设置</div>
+      <div className="prop-row">
+        <span className="prop-label">标签尺寸</span>
+        <div className="prop-field-split">
+          <InputNumber
+            size="small"
+            min={1}
+            value={pxToMm(templateSize.width)}
+            onChange={(v) => v !== null && updateSizeMm('width', v)}
+            style={{ flex: 1 }}
+          />
+          <span className="prop-unit">mm</span>
+          <span style={{ color: 'var(--text-tertiary)' }}>×</span>
+          <InputNumber
+            size="small"
+            min={1}
+            value={pxToMm(templateSize.height)}
+            onChange={(v) => v !== null && updateSizeMm('height', v)}
+            style={{ flex: 1 }}
+          />
+          <span className="prop-unit">mm</span>
+        </div>
       </div>
-    );
-  }
+      <div className="prop-row">
+        <span className="prop-label">方向</span>
+        <div className="prop-field">
+          <div className="orientation-btns">
+            <button type="button" className={`orientation-btn ${isLandscape ? 'active' : ''}`} onClick={() => swapOrientation(true)}>横向</button>
+            <button type="button" className={`orientation-btn ${!isLandscape ? 'active' : ''}`} onClick={() => swapOrientation(false)}>纵向</button>
+          </div>
+        </div>
+      </div>
+      <div className="prop-row">
+        <span className="prop-label">背景</span>
+        <div className="prop-field">
+          <ColorPicker size="small" value={pageBackground} onChange={(_, hex) => updatePageBackground(hex)} />
+        </div>
+      </div>
+      <div className="prop-row">
+        <span className="prop-label">显示网格</span>
+        <div className="prop-field">
+          <Switch size="small" checked={showGrid} onChange={(v) => toggleGrid(v)} />
+        </div>
+      </div>
+      <div className="prop-row">
+        <span className="prop-label">网格间距</span>
+        <div className="prop-field-split">
+          <InputNumber size="small" value={2} disabled style={{ flex: 1 }} />
+          <span className="prop-unit">mm</span>
+        </div>
+      </div>
+      <div className="prop-row">
+        <span className="prop-label">页面边距</span>
+        <div className="prop-field-split">
+          <InputNumber size="small" value={4} disabled style={{ flex: 1 }} />
+          <span className="prop-unit">mm</span>
+        </div>
+      </div>
+    </div>
+  );
 
-  const isText = activeObject.type === 'i-text' || activeObject.type === 'text' || activeObject.type === 'textbox';
-  const isRect = activeObject.type === 'rect';
-  const isCircle = activeObject.type === 'circle';
-  const isImage = activeObject.type === 'image';
-  const isShape = isRect || isCircle || activeObject.type === 'line' || activeObject.type === 'group';
+  const renderDataBinding = () => (
+    <div className="data-binding-empty">
+      {importedData.length === 0 ? (
+        <>
+          <p>暂无数据源</p>
+          <p style={{ fontSize: 12 }}>上传 Excel 或 CSV 后，可在此配置字段映射。</p>
+        </>
+      ) : (
+        <>
+          <p>已导入 {importedData.length} 条数据</p>
+          <p style={{ fontSize: 12 }}>已映射 {Object.keys(fieldMapping).length} 个字段</p>
+        </>
+      )}
+    </div>
+  );
+
+  const isText = activeObject?.type === 'i-text' || activeObject?.type === 'text' || activeObject?.type === 'textbox';
+  const isRect = activeObject?.type === 'rect';
+  const isCircle = activeObject?.type === 'circle';
+  const isImage = activeObject?.type === 'image';
+  const isShape = isRect || isCircle || activeObject?.type === 'line' || activeObject?.type === 'group';
 
   return (
     <div className="property-panel">
+      <div className="panel-tabs">
+        <button type="button" className={`panel-tab ${activeTab === 'style' ? 'active' : ''}`} onClick={() => setActiveTab('style')}>样式</button>
+        <button type="button" className={`panel-tab ${activeTab === 'databinding' ? 'active' : ''}`} onClick={() => setActiveTab('databinding')}>数据绑定</button>
+      </div>
+
+      <div className="panel-body">
+        {activeTab === 'databinding' && renderDataBinding()}
+
+        {activeTab === 'style' && !activeObject && (
+          <>
+            {renderCanvasSettings()}
+            <div className="panel-empty">
+              <div className="panel-empty-title">请选择一个元素</div>
+              <div className="panel-empty-desc">选中画布中的文字、图形、条码或图片后，可在这里编辑属性。</div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'style' && activeObject && (
+          <>
       {/* ── 基础属性 ── */}
       <div className="panel-section">
         <div className="section-title">基础</div>
@@ -618,6 +742,9 @@ const PropertyPanel: React.FC = () => {
             置底
           </Button>
         </div>
+      </div>
+          </>
+        )}
       </div>
     </div>
   );

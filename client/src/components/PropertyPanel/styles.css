@@ -1,51 +1,120 @@
 .property-panel {
-  width: 280px;
-  border-left: 1px solid #e8e8e8;
-  background: #fff;
+  width: var(--right-panel-width);
+  border-left: 1px solid var(--border-light);
+  background: var(--bg-panel);
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.property-panel .panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--divider);
+  flex-shrink: 0;
+}
+
+.property-panel .panel-tab {
+  flex: 1;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+}
+
+.property-panel .panel-tab:hover {
+  color: var(--text-primary);
+}
+
+.property-panel .panel-tab.active {
+  color: var(--color-primary);
+}
+
+.property-panel .panel-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
+}
+
+.property-panel .panel-body {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .property-panel .panel-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  color: #bfbfbf;
-  font-size: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  min-height: 200px;
+}
+
+.property-panel .panel-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.property-panel .panel-empty-desc {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  line-height: 18px;
 }
 
 .property-panel .panel-section {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 16px;
+  border-bottom: 1px solid var(--divider);
 }
 
 .property-panel .section-title {
-  font-size: 12px;
-  color: #8c8c8c;
-  margin-bottom: 8px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
 }
 
 .property-panel .prop-row {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   gap: 8px;
 }
 
 .property-panel .prop-label {
-  font-size: 12px;
-  color: #595959;
-  min-width: 48px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 56px;
   flex-shrink: 0;
 }
 
 .property-panel .prop-field {
   flex: 1;
   min-width: 0;
+}
+
+.property-panel .prop-field-split {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.property-panel .prop-unit {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
 .property-panel .layer-btns {
@@ -55,9 +124,9 @@
 }
 
 .property-panel .layer-btns .ant-btn {
-  font-size: 11px;
+  font-size: 12px;
   padding: 0 8px;
-  height: 28px;
+  height: 32px;
 }
 
 .property-panel .align-btns {
@@ -77,6 +146,40 @@
 
 .property-panel .align-hint {
   margin-top: 6px;
-  font-size: 11px;
-  color: #bfbfbf;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.property-panel .orientation-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.property-panel .orientation-btn {
+  flex: 1;
+  height: 32px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.property-panel .orientation-btn.active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.property-panel .data-binding-empty {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.property-panel .data-binding-empty p {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
 }

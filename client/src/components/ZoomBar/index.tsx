@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { ZoomInOutlined, ZoomOutOutlined, ExpandOutlined } from '@ant-design/icons';
+import { ZoomInOutlined, ZoomOutOutlined, ExpandOutlined, DragOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
 import { fitCanvasToContainer } from '@/utils/canvasViewport';
 import './styles.css';
 
 const ZoomBar: React.FC = () => {
-  const { zoom, setZoom, canvas, templateSize } = useEditorStore();
+  const { zoom, setZoom, canvas, templateSize, canvasTool, setCanvasTool } = useEditorStore();
   const [editing, setEditing] = useState(false);
   const [inputVal, setInputVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +38,15 @@ const ZoomBar: React.FC = () => {
 
   return (
     <div className="zoom-bar">
-      <button className="zoom-btn" onClick={handleZoomOut} title="缩小">
+      <button
+        type="button"
+        className={`zoom-btn ${canvasTool === 'pan' ? 'active' : ''}`}
+        onClick={() => setCanvasTool(canvasTool === 'pan' ? 'select' : 'pan')}
+        title="手型拖拽"
+      >
+        <DragOutlined />
+      </button>
+      <button type="button" className="zoom-btn" onClick={handleZoomOut} title="缩小">
         <ZoomOutOutlined />
       </button>
       {editing ? (
@@ -53,10 +61,10 @@ const ZoomBar: React.FC = () => {
       ) : (
         <span className="zoom-value" onClick={startEdit}>{Math.round(zoom * 100)}%</span>
       )}
-      <button className="zoom-btn" onClick={handleZoomIn} title="放大">
+      <button type="button" className="zoom-btn" onClick={handleZoomIn} title="放大">
         <ZoomInOutlined />
       </button>
-      <button className="zoom-btn" onClick={handleFit} title="适应画布">
+      <button type="button" className="zoom-btn" onClick={handleFit} title="适应窗口">
         <ExpandOutlined />
       </button>
     </div>

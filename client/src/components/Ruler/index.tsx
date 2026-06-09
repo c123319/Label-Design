@@ -3,13 +3,13 @@ import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
 import { PX_PER_MM, RULER_SIZE, getTickInterval } from '@/utils/canvasMetrics';
 import './styles.css';
-const HIGHLIGHT_COLOR = 'rgba(82, 196, 26, 0.35)';
-const HIGHLIGHT_BORDER_COLOR = 'rgba(82, 196, 26, 0.7)';
-const CURSOR_COLOR = 'rgba(22, 119, 255, 0.6)';
-const TICK_COLOR = '#999';
-const TICK_COLOR_MAJOR = '#555';
-const LABEL_COLOR = '#666';
-const BG_COLOR = '#f5f5f5';
+const HIGHLIGHT_COLOR = 'rgba(22, 119, 255, 0.15)';
+const HIGHLIGHT_BORDER_COLOR = 'rgba(22, 119, 255, 0.5)';
+const CURSOR_COLOR = '#1677FF';
+const TICK_COLOR = '#DADDE3';
+const TICK_COLOR_MAJOR = '#DADDE3';
+const LABEL_COLOR = '#6B7280';
+const BG_COLOR = '#FFFFFF';
 
 /** 浮点安全的倍数判定：避免 mm % major 因浮点漂移返回接近 major 而非 0 */
 function isNearMultiple(value: number, interval: number, tolerance = 0.01): boolean {
@@ -138,7 +138,7 @@ function drawHorizontalRuler(
     // 主刻度数字
     if (isMajor) {
       ctx.fillStyle = LABEL_COLOR;
-      ctx.font = '9px sans-serif';
+      ctx.font = '11px var(--font-family, sans-serif)';
       ctx.textAlign = 'center';
       ctx.fillText(formatTickLabel(mm, major), screenPx, 12);
     }
@@ -222,7 +222,7 @@ function drawVerticalRuler(
     // 主刻度数字（垂直标尺文字旋转）
     if (isMajor) {
       ctx.fillStyle = LABEL_COLOR;
-      ctx.font = '9px sans-serif';
+      ctx.font = '11px var(--font-family, sans-serif)';
       ctx.textAlign = 'center';
       ctx.save();
       ctx.translate(10, screenPx);

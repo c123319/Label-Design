@@ -3,6 +3,7 @@ import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
 import ContextMenu from './ContextMenu';
 import Ruler from '@/components/Ruler';
+import ZoomBar from '@/components/ZoomBar';
 import {
   PX_PER_MM,
   applyCanvasViewportTransform,
@@ -73,7 +74,7 @@ const CanvasEditor: React.FC = () => {
       const zoom = applyCanvasViewportTransform(ctx, canvas);
       const retina = fc.getRetinaScaling();
 
-      ctx.strokeStyle = '#e8e8e8';
+      ctx.strokeStyle = 'rgba(230, 232, 235, 0.6)';
       ctx.lineWidth = 1 / (zoom * retina);
       ctx.beginPath();
 
@@ -275,6 +276,9 @@ const CanvasEditor: React.FC = () => {
         <Ruler />
         <div className="canvas-wrapper" ref={wrapperRef}>
           <canvas ref={canvasElRef} />
+        </div>
+        <div className="canvas-zoom-overlay">
+          <ZoomBar />
         </div>
       </div>
     </ContextMenu>

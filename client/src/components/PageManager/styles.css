@@ -1,11 +1,11 @@
 .page-manager {
   flex: 1;
   min-width: 0;
-  background: #fafafa;
+  background: var(--bg-panel);
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 8px;
+  padding: 16px 20px;
+  gap: 12px;
   overflow-x: auto;
   overflow-y: hidden;
 }
@@ -15,18 +15,18 @@
 }
 
 .page-manager::-webkit-scrollbar-thumb {
-  background: #d9d9d9;
+  background: var(--border-primary);
   border-radius: 2px;
 }
 
 .page-thumb {
   position: relative;
   flex-shrink: 0;
-  width: 70px;
-  height: 90px;
-  border: 2px solid #d9d9d9;
-  border-radius: 4px;
-  background: #fff;
+  width: 72px;
+  height: 88px;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -36,31 +36,32 @@
 }
 
 .page-thumb:hover {
-  border-color: #4096ff;
+  border-color: var(--color-primary-hover);
 }
 
 .page-thumb.active {
-  border-color: #1677ff;
-  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.15);
 }
 
 .page-thumb .page-number {
   font-size: 12px;
-  color: #8c8c8c;
-  margin-top: 2px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
 }
 
 .page-thumb .page-preview {
-  width: 54px;
-  height: 60px;
-  background: #f5f5f5;
-  border: 1px solid #e8e8e8;
+  width: 56px;
+  height: 64px;
+  background: var(--bg-panel-light);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  color: #bfbfbf;
+  color: var(--text-placeholder);
 }
 
 .page-thumb .delete-btn {
@@ -70,7 +71,7 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ff4d4f;
+  background: var(--color-error);
   color: #fff;
   border: none;
   font-size: 10px;
@@ -87,21 +88,29 @@
 
 .page-add-btn {
   flex-shrink: 0;
-  width: 70px;
-  height: 90px;
-  border: 2px dashed #d9d9d9;
-  border-radius: 4px;
-  background: transparent;
+  width: 72px;
+  height: 88px;
+  border: 2px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel-light);
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  color: #8c8c8c;
+  gap: 4px;
+  font-size: 20px;
+  color: var(--text-tertiary);
   transition: all 0.2s;
 }
 
+.page-add-btn::after {
+  content: '新建页面';
+  font-size: 11px;
+}
+
 .page-add-btn:hover {
-  border-color: #1677ff;
-  color: #1677ff;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-light);
 }

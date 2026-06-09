@@ -32,7 +32,7 @@ export function fitCanvasToContainer(
   canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
 }
 
-/** 在模板区域内绘制页面背景色 */
+/** 在模板区域内绘制页面背景色（含圆角与阴影） */
 export function drawTemplateBackground(
   canvas: fabric.Canvas,
   templateSize: { width: number; height: number },
@@ -41,11 +41,32 @@ export function drawTemplateBackground(
   const fc = getFabricRenderContext(canvas);
   const ctx = fc.contextContainer;
   const { width, height } = templateSize;
+  const radius = 12;
 
   ctx.save();
   applyCanvasViewportTransform(ctx, canvas);
+
+  ctx.shadowColor = 'rgba(15, 23, 42, 0.08)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 8;
+
+  ctx.beginPath();
+  ctx.moveTo(radius, 0);
+  ctx.lineTo(width - radius, 0);
+  ctx.quadraticCurveTo(width, 0, width, radius);
+  ctx.lineTo(width, height - radius);
+  ctx.quadraticCurveTo(width, height, width - radius, height);
+  ctx.lineTo(radius, height);
+  ctx.quadraticCurveTo(0, height, 0, height - radius);
+  ctx.lineTo(0, radius);
+  ctx.quadraticCurveTo(0, 0, radius, 0);
+  ctx.closePath();
   ctx.fillStyle = background || '#ffffff';
-  ctx.fillRect(0, 0, width, height);
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
   ctx.restore();
 }
 

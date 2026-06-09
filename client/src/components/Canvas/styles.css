@@ -2,21 +2,27 @@
   position: relative;
   flex: 1;
   overflow: hidden;
-  background: #f0f0f0;
+  background: var(--bg-workspace);
 }
 
 .canvas-wrapper {
   position: absolute;
-  top: 25px;
-  left: 25px;
+  top: 28px;
+  left: 28px;
   right: 0;
   bottom: 0;
   overflow: hidden;
-  background: #f0f0f0;
+  background: var(--bg-workspace);
 }
 
-/* Fabric 容器铺满视口，不再撑出模板尺寸 */
 .canvas-wrapper .canvas-container {
   width: 100% !important;
   height: 100% !important;
+}
+
+.canvas-zoom-overlay {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
 }

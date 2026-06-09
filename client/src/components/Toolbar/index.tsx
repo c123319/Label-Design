@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Input, Select, Modal, message } from 'antd';
 import {
-  PlusCircleOutlined,
   AppstoreOutlined,
-  FontSizeOutlined,
-  BlockOutlined,
+  FileTextOutlined,
   PictureOutlined,
-  StarOutlined,
+  DatabaseOutlined,
+  PrinterOutlined,
   QuestionCircleOutlined,
   DesktopOutlined,
   SearchOutlined,
   UploadOutlined,
-  FilePdfOutlined,
   RightOutlined,
 } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
@@ -31,12 +29,11 @@ import {
 import './styles.css';
 
 const NAV_ICONS: Record<SidebarTab, React.ReactNode> = {
-  add: <PlusCircleOutlined />,
-  template: <AppstoreOutlined />,
-  text: <FontSizeOutlined />,
-  element: <BlockOutlined />,
+  component: <AppstoreOutlined />,
+  template: <FileTextOutlined />,
   material: <PictureOutlined />,
-  icon: <StarOutlined />,
+  datasource: <DatabaseOutlined />,
+  print: <PrinterOutlined />,
 };
 
 const LinePreview = ({ dashed, thick, diagonal }: { dashed?: boolean; thick?: boolean; diagonal?: boolean }) => (
@@ -84,8 +81,12 @@ const ShapePreview = ({ type }: { type: string }) => {
   );
 };
 
-const Toolbar: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<SidebarTab>('add');
+interface ToolbarProps {
+  onOpenDataImport?: () => void;
+}
+
+const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
+  const [activeTab, setActiveTab] = useState<SidebarTab>('component');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [templateFilter, setTemplateFilter] = useState('featured');
   const [templates, setTemplates] = useState<ITemplate[]>([]);
@@ -133,89 +134,67 @@ const Toolbar: React.FC = () => {
     </div>
   );
 
-  const renderAddPanel = () => (
+  const renderComponentPanel = () => (
     <div className="panel-scroll">
-      {renderSectionHeader('添加文件')}
-      <div className="panel-grid panel-grid-2">
-        <button type="button" className="panel-card" onClick={actions.triggerImageUpload}>
-          <UploadOutlined className="panel-card-icon" />
-          <span>上传图片</span>
-        </button>
-        <button type="button" className="panel-card" onClick={() => message.info('PDF 上传功能开发中')}>
-          <FilePdfOutlined className="panel-card-icon" />
-          <span>上传PDF</span>
-        </button>
-      </div>
+      <Input
+        prefix={<SearchOutlined />}
+        placeholder="搜索组件"
+        value={searchKeyword}
+        onChange={(e) => setSearchKeyword(e.target.value)}
+        className="panel-search"
+        allowClear
+      />
 
-      {renderSectionHeader('添加文字')}
-      <div className="panel-grid panel-grid-3">
+      {renderSectionHeader('文本')}
+      <div className="panel-grid panel-grid-2">
+        <button type="button" className="panel-card" onClick={() => actions.addText()}>
+          <span className="panel-text-preview">T</span>
+          <span>单行文本</span>
+        </button>
+        <button type="button" className="panel-card" onClick={() => actions.addText({ text: '多行文本\n第二行' })}>
+          <span className="panel-text-preview">¶</span>
+          <span>多行文本</span>
+        </button>
         <button type="button" className="panel-card" onClick={() => actions.addHeading(1)}>
-          <span className="panel-text-preview h1">H1</span>
+          <span className="panel-text-preview h1">H</span>
           <span>标题</span>
         </button>
-        <button type="button" className="panel-card" onClick={() => actions.addHeading(2)}>
-          <span className="panel-text-preview h2">H2</span>
-          <span>副标题</span>
-        </button>
-        <button type="button" className="panel-card" onClick={() => actions.addText()}>
-          <span className="panel-text-preview">Tt</span>
-          <span>文本</span>
+        <button type="button" className="panel-card" onClick={() => actions.addRect({ fill: 'transparent', stroke: '#DADDE3', rx: 4 })}>
+          <span className="panel-text-preview">□</span>
+          <span>文本框</span>
         </button>
       </div>
 
-      {renderSectionHeader('添加组件')}
+      {renderSectionHeader('条码')}
       <div className="panel-grid panel-grid-2">
         <button type="button" className="panel-card" onClick={() => setBarcodeModalOpen(true)}>
           <span className="panel-code-preview">|||</span>
-          <span>条形码</span>
+          <span>一维码</span>
         </button>
         <button type="button" className="panel-card" onClick={() => setQrModalOpen(true)}>
           <span className="panel-code-preview qr">▣</span>
           <span>二维码</span>
         </button>
-        <button type="button" className="panel-card" onClick={() => actions.addQRCode('PDF417-DEMO')}>
-          <span className="panel-code-preview">PDF</span>
-          <span>PDF417</span>
-        </button>
         <button type="button" className="panel-card" onClick={() => actions.addQRCode('DataMatrix')}>
           <span className="panel-code-preview">DM</span>
           <span>DataMatrix</span>
         </button>
+        <button type="button" className="panel-card" onClick={() => actions.addQRCode('PDF417-DEMO')}>
+          <span className="panel-code-preview">PDF</span>
+          <span>PDF417</span>
+        </button>
       </div>
 
-      {renderSectionHeader('线条', true)}
+      {renderSectionHeader('图形', true)}
       <div className="panel-grid panel-grid-4">
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine({ dashed: true })}><LinePreview dashed /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine()}><LinePreview /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine({ width: 4 })}><LinePreview thick /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine({ diagonal: true })}><LinePreview diagonal /></button>
-      </div>
-
-      {renderSectionHeader('箭头', true)}
-      <div className="panel-grid panel-grid-4">
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('simple')}><ArrowPreview type="simple" /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('block')}><ArrowPreview type="block" /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('double')}><ArrowPreview type="double" /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('circle')}><ArrowPreview type="circle" /></button>
-      </div>
-
-      {renderSectionHeader('形状', true)}
-      <div className="panel-grid panel-grid-3">
-        {([
-          ['rect', () => actions.addRect()],
-          ['circle', () => actions.addCircle()],
-          ['roundRect', () => actions.addRect({ rx: 8 })],
-          ['fillRect', () => actions.addRect({ fill: '#333333', stroke: '#333333' })],
-          ['fillRoundRect', () => actions.addRect({ fill: '#333333', stroke: '#333333', rx: 8 })],
-          ['triangle', () => actions.addTriangle()],
-          ['hexagon', () => actions.addPolygon(6)],
-          ['fillCircle', () => actions.addCircle({ fill: '#333333' })],
-          ['star', () => actions.addStar()],
-        ] as const).map(([type, fn]) => (
-          <button key={type} type="button" className="panel-shape-btn" onClick={fn}>
-            <ShapePreview type={type} />
-          </button>
-        ))}
+        <button type="button" className="panel-shape-btn" title="直线" onClick={() => actions.addLine()}><LinePreview /></button>
+        <button type="button" className="panel-shape-btn" title="箭头" onClick={() => actions.addArrow('simple')}><ArrowPreview type="simple" /></button>
+        <button type="button" className="panel-shape-btn" title="矩形" onClick={() => actions.addRect()}><ShapePreview type="rect" /></button>
+        <button type="button" className="panel-shape-btn" title="圆角矩形" onClick={() => actions.addRect({ rx: 8 })}><ShapePreview type="roundRect" /></button>
+        <button type="button" className="panel-shape-btn" title="圆形" onClick={() => actions.addCircle()}><ShapePreview type="circle" /></button>
+        <button type="button" className="panel-shape-btn" title="多边形" onClick={() => actions.addPolygon(6)}><ShapePreview type="hexagon" /></button>
+        <button type="button" className="panel-shape-btn" title="星形" onClick={() => actions.addStar()}><ShapePreview type="star" /></button>
+        <button type="button" className="panel-shape-btn" title="图片" onClick={actions.triggerImageUpload}><UploadOutlined style={{ fontSize: 20 }} /></button>
       </div>
     </div>
   );
@@ -271,80 +250,6 @@ const Toolbar: React.FC = () => {
     </div>
   );
 
-  const renderTextPanel = () => (
-    <div className="panel-scroll">
-      {renderSectionHeader('添加文字')}
-      <div className="panel-grid panel-grid-3">
-        <button type="button" className="panel-card" onClick={() => actions.addHeading(1)}>
-          <span className="panel-text-preview h1">H1</span>
-          <span>标题</span>
-        </button>
-        <button type="button" className="panel-card" onClick={() => actions.addHeading(2)}>
-          <span className="panel-text-preview h2">H2</span>
-          <span>副标题</span>
-        </button>
-        <button type="button" className="panel-card" onClick={() => actions.addText()}>
-          <span className="panel-text-preview">Tt</span>
-          <span>文本</span>
-        </button>
-      </div>
-
-      {renderSectionHeader('跨境警示语')}
-      <div className="warning-list">
-        {WARNING_PRESETS.map((item) => (
-          <button
-            key={item.title}
-            type="button"
-            className="warning-item"
-            onClick={() => actions.addPresetText(item.text)}
-          >
-            <div className="warning-title">⚠ {item.title}</div>
-            <div className="warning-text">{item.text}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderElementPanel = () => (
-    <div className="panel-scroll">
-      {renderSectionHeader('线条')}
-      <div className="panel-grid panel-grid-4">
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine({ dashed: true })}><LinePreview dashed /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine()}><LinePreview /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine({ width: 4 })}><LinePreview thick /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addLine({ diagonal: true })}><LinePreview diagonal /></button>
-      </div>
-
-      {renderSectionHeader('箭头')}
-      <div className="panel-grid panel-grid-4">
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('simple')}><ArrowPreview type="simple" /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('block')}><ArrowPreview type="block" /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('double')}><ArrowPreview type="double" /></button>
-        <button type="button" className="panel-shape-btn" onClick={() => actions.addArrow('circle')}><ArrowPreview type="circle" /></button>
-      </div>
-
-      {renderSectionHeader('形状')}
-      <div className="panel-grid panel-grid-4">
-        {([
-          ['rect', () => actions.addRect()],
-          ['circle', () => actions.addCircle()],
-          ['roundRect', () => actions.addRect({ rx: 8 })],
-          ['fillRect', () => actions.addRect({ fill: '#333333', stroke: '#333333' })],
-          ['fillRoundRect', () => actions.addRect({ fill: '#333333', stroke: '#333333', rx: 8 })],
-          ['triangle', () => actions.addTriangle()],
-          ['hexagon', () => actions.addPolygon(6)],
-          ['fillCircle', () => actions.addCircle({ fill: '#333333' })],
-          ['star', () => actions.addStar()],
-        ] as const).map(([type, fn]) => (
-          <button key={type} type="button" className="panel-shape-btn" onClick={fn}>
-            <ShapePreview type={type} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   const renderMaterialPanel = () => (
     <div className="panel-scroll">
       <Input
@@ -372,6 +277,32 @@ const Toolbar: React.FC = () => {
           ))}
         </div>
       )}
+      {renderSectionHeader('合规标识')}
+      <div className="panel-grid panel-grid-4 icon-grid">
+        {REGULATORY_ICONS
+          .filter((icon) => !searchKeyword || icon.toLowerCase().includes(searchKeyword.toLowerCase()))
+          .map((icon) => (
+            <button key={icon} type="button" className="icon-item" onClick={() => actions.addIconText(icon)}>
+              {icon}
+            </button>
+          ))}
+      </div>
+
+      {renderSectionHeader('跨境警示语')}
+      <div className="warning-list">
+        {WARNING_PRESETS.map((item) => (
+          <button
+            key={item.title}
+            type="button"
+            className="warning-item"
+            onClick={() => actions.addPresetText(item.text)}
+          >
+            <div className="warning-title">⚠ {item.title}</div>
+            <div className="warning-text">{item.text}</div>
+          </button>
+        ))}
+      </div>
+
       <div className="category-list">
         {MATERIAL_CATEGORIES.filter((c) => !searchKeyword || c.includes(searchKeyword)).map((cat) => (
           <button key={cat} type="button" className="category-item">
@@ -383,40 +314,40 @@ const Toolbar: React.FC = () => {
     </div>
   );
 
-  const renderIconPanel = () => (
+  const renderDatasourcePanel = () => (
     <div className="panel-scroll">
-      <Input
-        prefix={<SearchOutlined />}
-        placeholder="输入关键词搜索"
-        value={searchKeyword}
-        onChange={(e) => setSearchKeyword(e.target.value)}
-        className="panel-search"
-        allowClear
-      />
-      <button type="button" className="category-header">
-        <span>通用</span>
-        <RightOutlined className="expanded" />
-      </button>
-      <div className="panel-grid panel-grid-4 icon-grid">
-        {REGULATORY_ICONS
-          .filter((icon) => !searchKeyword || icon.toLowerCase().includes(searchKeyword.toLowerCase()))
-          .map((icon) => (
-            <button key={icon} type="button" className="icon-item" onClick={() => actions.addIconText(icon)}>
-              {icon}
-            </button>
-          ))}
+      <div className="panel-placeholder" style={{ minHeight: 200 }}>
+        <div className="panel-placeholder-title">暂无数据源</div>
+        <div className="panel-placeholder-desc">上传 Excel 或 CSV 文件，将数据字段绑定到标签元素。</div>
+        <button
+          type="button"
+          className="panel-card"
+          style={{ marginTop: 16, width: '100%' }}
+          onClick={() => onOpenDataImport?.()}
+        >
+          <UploadOutlined className="panel-card-icon" />
+          <span>上传数据文件</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderPrintPanel = () => (
+    <div className="panel-scroll">
+      <div className="panel-placeholder" style={{ minHeight: 200 }}>
+        <div className="panel-placeholder-title">打印设置</div>
+        <div className="panel-placeholder-desc">配置打印机、纸张尺寸、边距和出血等打印参数。</div>
       </div>
     </div>
   );
 
   const renderPanel = () => {
     switch (activeTab) {
-      case 'add': return renderAddPanel();
+      case 'component': return renderComponentPanel();
       case 'template': return renderTemplatePanel();
-      case 'text': return renderTextPanel();
-      case 'element': return renderElementPanel();
       case 'material': return renderMaterialPanel();
-      case 'icon': return renderIconPanel();
+      case 'datasource': return renderDatasourcePanel();
+      case 'print': return renderPrintPanel();
       default: return null;
     }
   };

@@ -8,6 +8,7 @@
 html, body, #root {
   height: 100%;
   overflow: hidden;
+  font-family: var(--font-family);
 }
 
 /* ── 主布局 ── */
@@ -15,48 +16,154 @@ html, body, #root {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f0f2f5;
+  background: var(--bg-page);
 }
 
 /* ── Header ── */
 .app-header {
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  height: 44px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  gap: 12px;
+  padding: 0 20px;
+  height: var(--top-nav-height);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-light);
+  gap: 16px;
   flex-shrink: 0;
 }
 
+.app-header .header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.app-header .logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .app-header .logo {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
-  color: #1677ff;
+  color: var(--text-primary);
   white-space: nowrap;
+}
+
+.app-header .header-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--divider);
+  flex-shrink: 0;
+}
+
+.app-header .file-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .app-header .template-name {
   font-size: 14px;
-  color: #595959;
+  color: var(--text-secondary);
   border: none;
-  border-bottom: 1px dashed #d9d9d9;
   outline: none;
   background: transparent;
-  padding: 2px 4px;
-  width: 160px;
+  padding: 4px 0;
+  min-width: 140px;
+  max-width: 220px;
 }
 
 .app-header .template-name:focus {
-  border-bottom-color: #1677ff;
+  color: var(--text-primary);
+}
+
+.app-header .edit-icon {
+  color: var(--text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.app-header .header-toolbar {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .app-header .header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.app-header .save-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-success);
+  white-space: nowrap;
+}
+
+.app-header .save-status.saving {
+  color: var(--text-tertiary);
+}
+
+.app-header .save-status.error {
+  color: var(--color-error);
+}
+
+.app-header .header-btn {
+  height: 36px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.app-header .header-btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.app-header .header-btn-primary:hover {
+  background: var(--color-primary-hover) !important;
+  border-color: var(--color-primary-hover) !important;
+}
+
+.app-header .user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.app-header .folder-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* ── 主内容区 ── */
@@ -72,13 +179,15 @@ html, body, #root {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  position: relative;
 }
 
 /* ── 底部区域 ── */
 .app-bottom {
   display: flex;
   align-items: stretch;
-  border-top: 1px solid #e8e8e8;
-  background: #fff;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-panel);
   flex-shrink: 0;
+  height: var(--bottom-page-height);
 }

@@ -2,10 +2,11 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 0 12px;
-  background: #fff;
-  height: 36px;
-  flex-shrink: 0;
+  padding: 6px 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
 }
 
 .zoom-bar .zoom-btn {
@@ -14,44 +15,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   border: none;
   background: transparent;
-  color: #595959;
+  color: var(--text-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   transition: all 0.15s;
 }
 
 .zoom-bar .zoom-btn:hover {
-  background: #e6f4ff;
-  color: #1677ff;
+  background: var(--bg-hover);
+  color: var(--color-primary);
+}
+
+.zoom-bar .zoom-btn.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
 }
 
 .zoom-bar .zoom-value {
   font-size: 12px;
-  color: #595959;
-  min-width: 42px;
+  color: var(--text-secondary);
+  min-width: 44px;
   text-align: center;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
 }
 
 .zoom-bar .zoom-value:hover {
-  background: #f0f0f0;
+  background: var(--bg-hover);
 }
 
 .zoom-bar .zoom-input {
   width: 52px;
-  height: 24px;
+  height: 28px;
   text-align: center;
   font-size: 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
   outline: none;
 }
 
 .zoom-bar .zoom-input:focus {
-  border-color: #1677ff;
+  border-color: var(--color-primary);
 }

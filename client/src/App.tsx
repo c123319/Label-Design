@@ -7,6 +7,9 @@ import {
   PlusOutlined,
   FolderOpenOutlined,
   CloudUploadOutlined,
+  PrinterOutlined,
+  EditOutlined,
+  CheckCircleFilled,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import CanvasEditor from '@/components/Canvas';
@@ -14,7 +17,6 @@ import Toolbar from '@/components/Toolbar';
 import TopToolbar from '@/components/TopToolbar';
 import PropertyPanel from '@/components/PropertyPanel';
 import PageManager from '@/components/PageManager';
-import ZoomBar from '@/components/ZoomBar';
 import DataImport from '@/components/DataImport';
 import TemplateManager from '@/components/TemplateManager';
 import { useEditorStore } from '@/store/useEditorStore';
@@ -32,6 +34,8 @@ const SIZE_PRESETS = [
   { label: '自定义', width: 0, height: 0 },
 ];
 
+type SaveStatus = 'saved' | 'saving' | 'error' | 'idle';
+
 function App() {
   const [dataImportOpen, setDataImportOpen] = useState(false);
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
@@ -40,23 +44,20 @@ function App() {
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [customWidth, setCustomWidth] = useState(800);
   const [customHeight, setCustomHeight] = useState(600);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
 
   const {
-    templateName, setTemplateName, templateSize, setTemplateSize,
+    templateName, setTemplateName, setTemplateSize,
     canvas, exportAsJSON,
     currentTemplateId, setCurrentTemplateId,
-    copySelected, pasteObject, duplicateSelected, deleteSelected,
-    selectAll, groupSelected, ungroupSelected, undo, redo,
   } = useEditorStore();
 
   const { directoryName, isConnected } = useFilesystemStore();
 
-  // 启动时检查文件夹连接
   useEffect(() => {
     useFilesystemStore.getState().checkConnection();
   }, []);
 
-  // 键盘快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
@@ -65,7 +66,7 @@ function App() {
       if (e.key === 'Delete') { e.preventDefault(); store.deleteSelected(); }
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
       if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) { e.preventDefault(); store.redo(); }
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleDownload(); }
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSave(); }
       if (e.ctrlKey && e.key === 'c') { e.preventDefault(); store.copySelected(); }
       if (e.ctrlKey && e.key === 'v') { e.preventDefault(); store.pasteObject(); }
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); store.duplicateSelected(); }
@@ -84,6 +85,7 @@ function App() {
     setTemplateName(newTemplateName);
     setTemplateSize({ width: preset.width || customWidth, height: preset.height || customHeight });
     setNewTemplateOpen(false);
+    setSaveStatus('idle');
     message.success(`已创建模板: ${newTemplateName}`);
   }, [selectedPreset, customWidth, customHeight, newTemplateName, setTemplateName, setTemplateSize]);
 
@@ -104,18 +106,22 @@ function App() {
     const id = currentTemplateId || template.id;
     const templateToSave = { ...template, id };
 
+    setSaveStatus('saving');
     try {
       if (isConnected) {
         const permitted = await fileSystemStorage.verifyPermission();
         if (permitted) {
           await fileSystemStorage.save(templateToSave);
           setCurrentTemplateId(id);
+          setSaveStatus('saved');
           message.success('已保存到本地');
           return;
         }
       }
+      setSaveStatus('error');
       message.warning('未连接本地文件夹，请先在模板管理中选择文件夹');
     } catch {
+      setSaveStatus('error');
       message.error('保存失败');
     }
   }, [exportAsJSON, currentTemplateId, setCurrentTemplateId, isConnected]);
@@ -125,6 +131,7 @@ function App() {
     const id = currentTemplateId || template.id;
     const templateToSave = { ...template, id };
 
+    setSaveStatus('saving');
     try {
       if (currentTemplateId) {
         await templateApi.update(id, templateToSave);
@@ -132,8 +139,10 @@ function App() {
         await templateApi.create(templateToSave);
         setCurrentTemplateId(id);
       }
+      setSaveStatus('saved');
       message.success('已保存到云端');
     } catch {
+      setSaveStatus('error');
       message.error('云端保存失败');
     }
   }, [exportAsJSON, currentTemplateId, setCurrentTemplateId]);
@@ -142,7 +151,6 @@ function App() {
     if (!canvas) return;
     const activeObj = canvas.getActiveObject();
     canvas.discardActiveObject();
-    // 动态网格不会出现在 canvas.toDataURL 中，无需特殊处理
     const dataURL = canvas.toDataURL({ format, quality: format === 'jpg' ? 0.92 : 1, multiplier });
     if (activeObj) canvas.setActiveObject(activeObj);
     canvas.renderAll();
@@ -153,6 +161,19 @@ function App() {
     message.success(`已导出 ${format.toUpperCase()} (${multiplier}x)`);
   }, [canvas, templateName]);
 
+  const handlePrint = useCallback(() => {
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    canvas.discardActiveObject();
+    const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
+    if (activeObj) canvas.setActiveObject(activeObj);
+    canvas.renderAll();
+    const win = window.open('');
+    if (win) {
+      win.document.write(`<img src="${dataURL}" style="max-width:100%" onload="window.print();window.close()" />`);
+    }
+  }, [canvas]);
+
   const exportMenuItems = [
     { key: 'png1x', label: 'PNG 1x', onClick: () => handleExport('png', 1) },
     { key: 'png2x', label: 'PNG 2x', onClick: () => handleExport('png', 2) },
@@ -162,51 +183,95 @@ function App() {
     { key: 'jpg2x', label: 'JPG 2x', onClick: () => handleExport('jpg', 2) },
   ];
 
+  const saveStatusText = {
+    saved: '保存成功',
+    saving: '保存中...',
+    error: '保存失败',
+    idle: '',
+  }[saveStatus];
+
   return (
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        token: {
+          colorPrimary: '#1677FF',
+          borderRadius: 6,
+          fontFamily: 'var(--font-family)',
+          colorText: '#1F2937',
+          colorTextSecondary: '#4B5563',
+          colorBorder: '#DADDE3',
+        },
+      }}
+    >
       <div className="app-layout">
-        {/* Header */}
         <header className="app-header">
-          <span className="logo">Label Design</span>
-          <input className="template-name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
+          <div className="header-brand">
+            <div className="logo-icon">LS</div>
+            <span className="logo">标签工作台</span>
+          </div>
+
+          <div className="header-divider" />
+
+          <div className="file-info">
+            <input
+              className="template-name"
+              value={templateName}
+              onChange={(e) => { setTemplateName(e.target.value); setSaveStatus('idle'); }}
+            />
+            <EditOutlined className="edit-icon" />
+          </div>
+
+          <div className="header-toolbar">
+            <TopToolbar />
+          </div>
+
           <div className="header-actions">
             {isConnected && directoryName && (
               <Tooltip title={`模板将保存到: ${directoryName}`}>
-                <span style={{ fontSize: 12, color: '#8c8c8c', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span className="folder-hint">
                   <FolderOpenOutlined /> {directoryName}
                 </span>
               </Tooltip>
             )}
-            <Button size="small" icon={<PlusOutlined />} onClick={() => setNewTemplateOpen(true)}>新建</Button>
-            <Button size="small" icon={<FolderOpenOutlined />} onClick={() => setTemplateManagerOpen(true)}>模板</Button>
+            {saveStatusText && (
+              <span className={`save-status ${saveStatus}`}>
+                {saveStatus === 'saved' && <CheckCircleFilled />}
+                {saveStatusText}
+              </span>
+            )}
             <Dropdown menu={{ items: [
-              { key: 'folder', label: '保存到本地文件夹', icon: <FolderOpenOutlined />, onClick: handleSave },
+              { key: 'new', label: '新建模板', icon: <PlusOutlined />, onClick: () => setNewTemplateOpen(true) },
+              { key: 'templates', label: '模板管理', icon: <FolderOpenOutlined />, onClick: () => setTemplateManagerOpen(true) },
+              { key: 'data', label: '数据导入', icon: <ImportOutlined />, onClick: () => setDataImportOpen(true) },
+              { type: 'divider' as const },
+              { key: 'folder', label: '保存到本地', icon: <FolderOpenOutlined />, onClick: handleSave },
               { key: 'cloud', label: '保存到云端', icon: <CloudUploadOutlined />, onClick: handleSaveToCloud },
+              { key: 'download', label: '下载 JSON', icon: <DownloadOutlined />, onClick: handleDownload },
             ] }}>
-              <Button size="small" icon={<SaveOutlined />} onClick={handleDownload}>保存 ▾</Button>
+              <Button className="header-btn" icon={<SaveOutlined />}>保存</Button>
             </Dropdown>
             <Dropdown menu={{ items: exportMenuItems }}>
-              <Button size="small" icon={<DownloadOutlined />}>导出 ▾</Button>
+              <Button className="header-btn" icon={<DownloadOutlined />}>导出</Button>
             </Dropdown>
-            <Button size="small" icon={<ImportOutlined />} onClick={() => setDataImportOpen(true)}>数据</Button>
+            <Button type="primary" className="header-btn header-btn-primary" icon={<PrinterOutlined />} onClick={handlePrint}>
+              打印
+            </Button>
+            <div className="user-avatar" title="用户">MA</div>
           </div>
         </header>
 
-        {/* 主内容 */}
         <div className="app-main">
-          <Toolbar />
+          <Toolbar onOpenDataImport={() => setDataImportOpen(true)} />
           <div className="app-content">
-            <TopToolbar />
             <CanvasEditor />
             <div className="app-bottom">
               <PageManager />
-              <ZoomBar />
             </div>
           </div>
           <PropertyPanel />
         </div>
 
-        {/* 弹窗 */}
         <DataImport open={dataImportOpen} onClose={() => setDataImportOpen(false)} />
         <TemplateManager open={templateManagerOpen} onClose={() => setTemplateManagerOpen(false)} />
 

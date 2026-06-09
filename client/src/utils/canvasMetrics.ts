@@ -4,7 +4,7 @@ import type { fabric } from 'fabric';
 export const PX_PER_MM = 300 / 25.4;
 
 /** 标尺宽度 (px) */
-export const RULER_SIZE = 25;
+export const RULER_SIZE = 28;
 
 type FabricRenderCanvas = fabric.Canvas & {
   contextContainer: CanvasRenderingContext2D;

@@ -1,12 +1,11 @@
-export type SidebarTab = 'add' | 'template' | 'text' | 'element' | 'material' | 'icon';
+export type SidebarTab = 'component' | 'template' | 'material' | 'datasource' | 'print';
 
 export const NAV_ITEMS: { key: SidebarTab; label: string }[] = [
-  { key: 'add', label: '添加' },
+  { key: 'component', label: '组件' },
   { key: 'template', label: '模板' },
-  { key: 'text', label: '文字' },
-  { key: 'element', label: '元素' },
   { key: 'material', label: '素材' },
-  { key: 'icon', label: '图标' },
+  { key: 'datasource', label: '数据源' },
+  { key: 'print', label: '打印设置' },
 ];
 
 export const WARNING_PRESETS = [
