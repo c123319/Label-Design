@@ -97,7 +97,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   const [barcodeValue, setBarcodeValue] = useState('{{barcode_data}}');
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  const { sidebarCollapsed, toggleSidebar, loadFromJSON, setCurrentTemplateId } = useEditorStore();
+  const { sidebarCollapsed, toggleSidebar, loadFromJSON, setCurrentTemplateId, dataSource } = useEditorStore();
   const { isConnected } = useFilesystemStore();
   const actions = useCanvasActions();
 
@@ -316,19 +316,47 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
 
   const renderDatasourcePanel = () => (
     <div className="panel-scroll">
-      <div className="panel-placeholder" style={{ minHeight: 200 }}>
-        <div className="panel-placeholder-title">暂无数据源</div>
-        <div className="panel-placeholder-desc">上传 Excel 或 CSV 文件，将数据字段绑定到标签元素。</div>
-        <button
-          type="button"
-          className="panel-card"
-          style={{ marginTop: 16, width: '100%' }}
-          onClick={() => onOpenDataImport?.()}
-        >
-          <UploadOutlined className="panel-card-icon" />
-          <span>上传数据文件</span>
-        </button>
-      </div>
+      {dataSource ? (
+        <div className="datasource-panel-loaded">
+          <div className="panel-section-header"><span>当前数据源</span></div>
+          <div className="datasource-info">
+            <div className="datasource-file">{dataSource.fileName || '本地数据'}</div>
+            <div className="datasource-meta">{dataSource.totalRows} 条 · {dataSource.fields.length} 个字段</div>
+          </div>
+          <div className="panel-section-header" style={{ marginTop: 12 }}><span>字段列表</span></div>
+          <div className="datasource-fields">
+            {dataSource.fields.map((f) => (
+              <div key={f.fieldCode} className="datasource-field-row">
+                <span className="datasource-field-name">{f.fieldName}</span>
+                {f.sampleValue && <span className="datasource-field-sample">{f.sampleValue}</span>}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="panel-card"
+            style={{ marginTop: 16, width: '100%' }}
+            onClick={() => onOpenDataImport?.()}
+          >
+            <UploadOutlined className="panel-card-icon" />
+            <span>重新上传</span>
+          </button>
+        </div>
+      ) : (
+        <div className="panel-placeholder" style={{ minHeight: 200 }}>
+          <div className="panel-placeholder-title">暂无数据源</div>
+          <div className="panel-placeholder-desc">上传 Excel 或 CSV 文件，将数据字段绑定到标签元素。</div>
+          <button
+            type="button"
+            className="panel-card"
+            style={{ marginTop: 16, width: '100%' }}
+            onClick={() => onOpenDataImport?.()}
+          >
+            <UploadOutlined className="panel-card-icon" />
+            <span>上传数据文件</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 

@@ -18,7 +18,12 @@ import {
 import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
 import { alignSelection } from '@/utils/alignObjects';
+import DataBindingPanel from './DataBindingPanel';
 import './styles.css';
+
+interface PropertyPanelProps {
+  onOpenDataImport?: () => void;
+}
 
 /** 垂直居中 icon */
 const AlignVIcon = () => (
@@ -37,13 +42,14 @@ const FONT_FAMILIES = [
   { value: 'Courier New, monospace', label: 'Courier New' },
 ];
 
-const PropertyPanel: React.FC = () => {
+const PropertyPanel: React.FC<PropertyPanelProps> = ({ onOpenDataImport }) => {
   const {
     canvas, activeObject, activeObjects, templateSize, setTemplateSize,
     pages, currentPageIndex, showGrid, toggleGrid, saveHistory,
-    importedData, fieldMapping,
+    propertyPanelTab, setPropertyPanelTab,
   } = useEditorStore();
-  const [activeTab, setActiveTab] = useState<'style' | 'databinding'>('style');
+  const activeTab = propertyPanelTab;
+  const setActiveTab = setPropertyPanelTab;
   const [objProps, setObjProps] = useState<Record<string, any>>({});
 
   const pageBackground = pages[currentPageIndex]?.background || '#ffffff';
@@ -237,22 +243,6 @@ const PropertyPanel: React.FC = () => {
     </div>
   );
 
-  const renderDataBinding = () => (
-    <div className="data-binding-empty">
-      {importedData.length === 0 ? (
-        <>
-          <p>暂无数据源</p>
-          <p style={{ fontSize: 12 }}>上传 Excel 或 CSV 后，可在此配置字段映射。</p>
-        </>
-      ) : (
-        <>
-          <p>已导入 {importedData.length} 条数据</p>
-          <p style={{ fontSize: 12 }}>已映射 {Object.keys(fieldMapping).length} 个字段</p>
-        </>
-      )}
-    </div>
-  );
-
   const isText = activeObject?.type === 'i-text' || activeObject?.type === 'text' || activeObject?.type === 'textbox';
   const isRect = activeObject?.type === 'rect';
   const isCircle = activeObject?.type === 'circle';
@@ -267,7 +257,9 @@ const PropertyPanel: React.FC = () => {
       </div>
 
       <div className="panel-body">
-        {activeTab === 'databinding' && renderDataBinding()}
+        {activeTab === 'databinding' && (
+          <DataBindingPanel activeObject={activeObject} onOpenDataImport={onOpenDataImport} />
+        )}
 
         {activeTab === 'style' && !activeObject && (
           <>

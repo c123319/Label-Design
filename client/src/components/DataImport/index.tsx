@@ -1,11 +1,19 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Modal, Upload, Table, Select, Tag, Button, message, Alert } from 'antd';
-import { InboxOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { Modal, Upload, Table, Tag, Button, message, Alert } from 'antd';
+import { InboxOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
+import {
+  buildFieldsFromColumns,
+  validateUploadData,
+  collectCanvasPlaceholders,
+} from '@/utils/renderTemplate';
+import type { IDataSource } from '@shared/types/datasource';
+import { dataSourceApi } from '@/services/api';
 import * as XLSX from 'xlsx';
 import './styles.css';
 
 const { Dragger } = Upload;
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 interface DataImportProps {
   open: boolean;
@@ -13,72 +21,70 @@ interface DataImportProps {
 }
 
 const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
-  const { importedData, setImportedData, fieldMapping, setFieldMapping, canvas } =
-    useEditorStore();
+  const { canvas, setDataSource, currentTemplateId } = useEditorStore();
 
   const [rawData, setRawData] = useState<Record<string, string | number>[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
+  const [fileName, setFileName] = useState('');
+  const [fileType, setFileType] = useState<IDataSource['fileType']>('xlsx');
+  const [uploadValidation, setUploadValidation] = useState<{
+    errors: string[];
+    warnings: string[];
+  } | null>(null);
 
-  /** 从画布中提取占位符 */
   const placeholders = useMemo(() => {
     if (!canvas) return [];
-    const objs = canvas.getObjects();
-    const phSet = new Set<string>();
-    objs.forEach((obj: any) => {
-      const text = obj.text as string | undefined;
-      if (text) {
-        const matches = text.match(/\{\{(\w+)\}\}/g);
-        if (matches) {
-          matches.forEach((m) => {
-            phSet.add(m.replace(/\{\{|\}\}/g, ''));
-          });
-        }
-      }
-    });
-    return Array.from(phSet);
-  }, [canvas, rawData]); // rawData changes trigger re-scan
+    return collectCanvasPlaceholders(canvas);
+  }, [canvas, rawData]);
 
-  /** 处理文件上传 */
   const handleFile = useCallback((file: File) => {
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    const reader = new FileReader();
+    if (file.size > MAX_FILE_SIZE) {
+      message.error('文件大小不能超过 20MB');
+      return false;
+    }
 
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['csv', 'xlsx', 'xls', 'json'].includes(ext ?? '')) {
+      message.error('仅支持 xlsx、csv、json 格式');
+      return false;
+    }
+
+    const reader = new FileReader();
     reader.onload = (e) => {
       const data = e.target?.result;
       let parsed: Record<string, string | number>[] = [];
 
-      if (ext === 'json') {
-        parsed = JSON.parse(data as string);
-        if (!Array.isArray(parsed)) {
-          message.error('JSON 文件需要是数组格式');
+      try {
+        if (ext === 'json') {
+          parsed = JSON.parse(data as string);
+          if (!Array.isArray(parsed)) {
+            message.error('JSON 文件需要是数组格式');
+            return;
+          }
+          setFileType('json');
+        } else if (ext === 'csv' || ext === 'xlsx' || ext === 'xls') {
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          parsed = XLSX.utils.sheet_to_json(sheet) as Record<string, string | number>[];
+          setFileType(ext === 'csv' ? 'csv' : 'xlsx');
+        }
+
+        const cols = parsed.length > 0 ? Object.keys(parsed[0]) : [];
+        const validation = validateUploadData(cols, parsed);
+        setUploadValidation({ errors: validation.errors, warnings: validation.warnings });
+
+        if (!validation.valid) {
+          message.error(validation.errors[0]);
           return;
         }
-      } else if (ext === 'csv' || ext === 'xlsx' || ext === 'xls') {
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        parsed = XLSX.utils.sheet_to_json(sheet);
-      } else {
-        message.error(`不支持的格式: .${ext}`);
-        return;
-      }
 
-      if (parsed.length === 0) {
-        message.error('文件中没有数据');
-        return;
+        setRawData(parsed);
+        setColumns(cols);
+        setFileName(file.name);
+        message.success(`成功解析 ${parsed.length} 条数据，${cols.length} 个字段`);
+      } catch {
+        message.error('文件解析失败');
       }
-
-      const cols = Object.keys(parsed[0]);
-      setRawData(parsed);
-      setColumns(cols);
-      // 自动映射同名字段
-      const autoMapping: Record<string, string> = {};
-      cols.forEach((col) => {
-        if (placeholders.includes(col)) {
-          autoMapping[col] = col;
-        }
-      });
-      setFieldMapping(autoMapping);
-      message.success(`成功解析 ${parsed.length} 条数据，${cols.length} 个字段`);
     };
 
     if (ext === 'json') {
@@ -87,17 +93,34 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
       reader.readAsArrayBuffer(file);
     }
 
-    return false; // 阻止默认上传行为
-  }, [placeholders, setFieldMapping]);
+    return false;
+  }, []);
 
-  /** 确认导入 */
   const handleConfirm = useCallback(() => {
-    setImportedData(rawData);
-    message.success(`已导入 ${rawData.length} 条数据`);
-    onClose();
-  }, [rawData, setImportedData, onClose]);
+    if (rawData.length === 0) return;
 
-  /** 预览表格列定义 */
+    const fields = buildFieldsFromColumns(columns, rawData[0]);
+    const dataSource: IDataSource = {
+      id: `ds_${Date.now()}`,
+      fileName,
+      fileType,
+      fields,
+      previewRows: rawData.slice(0, 10),
+      totalRows: rawData.length,
+      rows: rawData,
+    };
+
+    setDataSource(dataSource);
+    useEditorStore.getState().setImportedData(rawData);
+
+    if (currentTemplateId) {
+      dataSourceApi.upload(fileName, rawData, currentTemplateId).catch(() => {});
+    }
+
+    message.success(`已绑定数据源：${rawData.length} 条`);
+    onClose();
+  }, [rawData, columns, fileName, fileType, setDataSource, currentTemplateId, onClose]);
+
   const tableColumns = useMemo(
     () =>
       columns.slice(0, 8).map((col) => ({
@@ -110,28 +133,27 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
     [columns],
   );
 
+  const fieldList = buildFieldsFromColumns(columns, rawData[0]);
+
   return (
     <Modal
-      title="批量数据导入"
+      title="数据绑定 — 上传数据源"
       open={open}
       onCancel={onClose}
       className="data-import-modal"
       width={800}
       footer={[
-        <Button key="cancel" onClick={onClose}>
-          取消
-        </Button>,
+        <Button key="cancel" onClick={onClose}>取消</Button>,
         <Button
           key="confirm"
           type="primary"
-          disabled={rawData.length === 0}
+          disabled={rawData.length === 0 || (uploadValidation?.errors.length ?? 0) > 0}
           onClick={handleConfirm}
         >
-          确认导入 ({rawData.length} 条)
+          确认绑定 ({rawData.length} 条)
         </Button>,
       ]}
     >
-      {/* 上传区域 */}
       <div className="upload-area">
         <Dragger
           accept=".csv,.xlsx,.xls,.json"
@@ -139,15 +161,23 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
           beforeUpload={handleFile}
           multiple={false}
         >
-          <p className="ant-upload-drag-icon">
-            <InboxOutlined />
-          </p>
+          <p className="ant-upload-drag-icon"><InboxOutlined /></p>
           <p>点击或拖拽文件到此处上传</p>
-          <p style={{ color: '#8c8c8c', fontSize: 12 }}>支持 CSV、Excel (.xlsx/.xls)、JSON 格式</p>
+          <p style={{ color: '#8c8c8c', fontSize: 12 }}>
+            支持 CSV、Excel (.xlsx/.xls)、JSON，最大 20MB。第一行须为字段名。
+          </p>
         </Dragger>
       </div>
 
-      {/* 占位符提示 */}
+      {uploadValidation && uploadValidation.warnings.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={uploadValidation.warnings.join('；')}
+        />
+      )}
+
       {placeholders.length > 0 && (
         <Alert
           type="info"
@@ -157,46 +187,30 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
             <span>
               模板中发现 <strong>{placeholders.length}</strong> 个占位符：
               {placeholders.map((p) => (
-                <Tag key={p} color="blue" style={{ marginLeft: 4 }}>
-                  {'{{' + p + '}}'}
-                </Tag>
+                <Tag key={p} color="blue" style={{ marginLeft: 4 }}>{'{{' + p + '}}'}</Tag>
               ))}
             </span>
           }
         />
       )}
 
-      {/* 字段映射 */}
-      {columns.length > 0 && placeholders.length > 0 && (
-        <div className="field-mapping">
-          <h4 style={{ marginBottom: 8 }}>字段映射</h4>
-          {placeholders.map((ph) => (
-            <div key={ph} className="mapping-row">
-              <Tag color="blue">{'{{' + ph + '}}'}</Tag>
-              <ArrowRightOutlined className="mapping-arrow" />
-              <Select
-                size="small"
-                style={{ width: 180 }}
-                placeholder="选择数据字段"
-                value={fieldMapping[ph] || undefined}
-                onChange={(v) => {
-                  const newMapping = { ...fieldMapping, [ph]: v };
-                  setFieldMapping(newMapping);
-                }}
-                allowClear
-                options={columns.map((col) => ({ value: col, label: col }))}
-              />
-            </div>
-          ))}
+      {columns.length > 0 && (
+        <div className="field-list-section">
+          <h4>字段列表（{columns.length} 个）</h4>
+          <div className="field-tags">
+            {fieldList.map((f) => (
+              <Tag key={f.fieldCode} title={f.sampleValue ? `示例: ${f.sampleValue}` : undefined}>
+                {f.fieldName}
+                {f.sampleValue && <span className="field-sample"> ({f.sampleValue})</span>}
+              </Tag>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* 数据预览 */}
       {rawData.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <h4>
-            数据预览（前 {Math.min(rawData.length, 10)} 条，共 {rawData.length} 条）
-          </h4>
+          <h4>数据预览（前 {Math.min(rawData.length, 10)} 条，共 {rawData.length} 条）</h4>
           <Table
             size="small"
             scroll={{ x: 'max-content' }}

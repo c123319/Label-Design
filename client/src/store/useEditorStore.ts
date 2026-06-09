@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { fabric } from 'fabric';
 import type { ITemplate, ITemplatePage } from '@shared/types/template';
+import type { IDataSource } from '@shared/types/datasource';
 import { restoreTextObjectsEditability } from '@/utils/textEditing';
+import { applyPreviewToCanvas, clearPreviewCache } from '@/utils/previewRender';
 
 /** 默认模板尺寸 (100x70mm 标签，300dpi → 1181x827px) */
 const DEFAULT_SIZE = { width: 1181, height: 827 };
@@ -70,8 +72,24 @@ interface EditorState {
   mousePosition: { x: number; y: number } | null;
   setMousePosition: (pos: { x: number; y: number } | null) => void;
 
-  // ── 数据导入 ──
+  // ── 数据绑定 ──
+  dataSource: IDataSource | null;
+  currentPreviewIndex: number;
+  previewMode: boolean;
+  previewSnapshot: string | null;
+  propertyPanelTab: 'style' | 'databinding';
+  setDataSource: (source: IDataSource | null) => void;
+  setCurrentPreviewIndex: (index: number) => void;
+  setPropertyPanelTab: (tab: 'style' | 'databinding') => void;
+  enterPreviewMode: () => Promise<void>;
+  exitPreviewMode: () => Promise<void>;
+  applyPreviewRow: (index: number) => Promise<void>;
+  previewNext: () => Promise<void>;
+  previewPrev: () => Promise<void>;
+
+  /** @deprecated 使用 dataSource */
   importedData: Record<string, string | number>[];
+  /** @deprecated 使用元素 binding */
   fieldMapping: Record<string, string>;
   setImportedData: (data: Record<string, string | number>[]) => void;
   setFieldMapping: (mapping: Record<string, string>) => void;
@@ -268,10 +286,95 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   mousePosition: null,
   setMousePosition: (mousePosition) => set({ mousePosition }),
 
-  // ── 数据导入 ──
+  // ── 数据绑定 ──
+  dataSource: null,
+  currentPreviewIndex: 0,
+  previewMode: false,
+  previewSnapshot: null,
+  propertyPanelTab: 'style',
+  setDataSource: (dataSource) => set({ dataSource, currentPreviewIndex: 0 }),
+  setCurrentPreviewIndex: (currentPreviewIndex) => set({ currentPreviewIndex }),
+  setPropertyPanelTab: (propertyPanelTab) => set({ propertyPanelTab }),
+
+  enterPreviewMode: async () => {
+    const { canvas, dataSource, previewMode } = get();
+    if (!canvas || !dataSource || dataSource.rows.length === 0 || previewMode) return;
+    const snapshot = JSON.stringify(canvas.toJSON());
+    set({ previewMode: true, previewSnapshot: snapshot, currentPreviewIndex: 0 });
+    clearPreviewCache(canvas);
+    await applyPreviewToCanvas(canvas, dataSource.rows[0]);
+  },
+
+  exitPreviewMode: async () => {
+    const { canvas, previewSnapshot, previewMode } = get();
+    if (!canvas || !previewMode || !previewSnapshot) {
+      set({ previewMode: false, previewSnapshot: null });
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      canvas.loadFromJSON(JSON.parse(previewSnapshot), () => {
+        clearPreviewCache(canvas);
+        restoreTextObjectsEditability(canvas);
+        canvas.renderAll();
+        set({ previewMode: false, previewSnapshot: null });
+        resolve();
+      });
+    });
+  },
+
+  applyPreviewRow: async (index) => {
+    const { canvas, dataSource, previewSnapshot, previewMode } = get();
+    if (!canvas || !dataSource || !previewMode || !previewSnapshot) return;
+    const row = dataSource.rows[index];
+    if (!row) return;
+    await new Promise<void>((resolve) => {
+      canvas.loadFromJSON(JSON.parse(previewSnapshot), async () => {
+        clearPreviewCache(canvas);
+        restoreTextObjectsEditability(canvas);
+        await applyPreviewToCanvas(canvas, row);
+        set({ currentPreviewIndex: index });
+        resolve();
+      });
+    });
+  },
+
+  previewNext: async () => {
+    const { dataSource, currentPreviewIndex, applyPreviewRow } = get();
+    if (!dataSource || currentPreviewIndex >= dataSource.rows.length - 1) return;
+    await applyPreviewRow(currentPreviewIndex + 1);
+  },
+
+  previewPrev: async () => {
+    const { currentPreviewIndex, applyPreviewRow } = get();
+    if (currentPreviewIndex <= 0) return;
+    await applyPreviewRow(currentPreviewIndex - 1);
+  },
+
   importedData: [],
   fieldMapping: {},
-  setImportedData: (importedData) => set({ importedData }),
+  setImportedData: (importedData) => {
+    if (importedData.length === 0) {
+      set({ importedData, dataSource: null });
+      return;
+    }
+    const columns = Object.keys(importedData[0]);
+    const fields = columns.map((col) => ({
+      fieldCode: col,
+      fieldName: col,
+      fieldType: 'text' as const,
+      sampleValue: String(importedData[0][col] ?? ''),
+    }));
+    set({
+      importedData,
+      dataSource: {
+        id: `ds_local_${Date.now()}`,
+        fields,
+        previewRows: importedData.slice(0, 10),
+        totalRows: importedData.length,
+        rows: importedData,
+      },
+    });
+  },
   setFieldMapping: (fieldMapping) => set({ fieldMapping }),
 
   // ── 历史记录 ──

@@ -11,6 +11,8 @@ import {
   EditOutlined,
   CheckCircleFilled,
   DownOutlined,
+  DatabaseOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import CanvasEditor from '@/components/Canvas';
@@ -19,6 +21,8 @@ import TopToolbar from '@/components/TopToolbar';
 import PropertyPanel from '@/components/PropertyPanel';
 import PageManager from '@/components/PageManager';
 import DataImport from '@/components/DataImport';
+import DataPreview from '@/components/DataPreview';
+import BatchGenerate from '@/components/BatchGenerate';
 import TemplateManager from '@/components/TemplateManager';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useFilesystemStore } from '@/store/useFilesystemStore';
@@ -42,6 +46,7 @@ type SaveStatus = 'saved' | 'saving' | 'error' | 'idle';
 
 function App() {
   const [dataImportOpen, setDataImportOpen] = useState(false);
+  const [batchGenerateOpen, setBatchGenerateOpen] = useState(false);
   const [newTemplateOpen, setNewTemplateOpen] = useState(false);
   const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('未命名模板');
@@ -55,7 +60,13 @@ function App() {
     templateName, setTemplateName, setTemplateSize,
     canvas, exportAsJSON,
     currentTemplateId, setCurrentTemplateId,
+    setPropertyPanelTab, dataSource,
   } = useEditorStore();
+
+  const openDataBinding = useCallback(() => {
+    setPropertyPanelTab('databinding');
+    if (!dataSource) setDataImportOpen(true);
+  }, [setPropertyPanelTab, dataSource]);
 
   const { directoryName, isConnected } = useFilesystemStore();
 
@@ -281,8 +292,16 @@ function App() {
             <Button className="header-btn" icon={<FolderOpenOutlined />} onClick={() => setTemplateManagerOpen(true)}>
               模板管理
             </Button>
-            <Button className="header-btn" icon={<ImportOutlined />} onClick={() => setDataImportOpen(true)}>
-              数据导入
+            <Button className="header-btn" icon={<DatabaseOutlined />} onClick={openDataBinding}>
+              数据绑定
+            </Button>
+            <Button
+              className="header-btn"
+              icon={<ThunderboltOutlined />}
+              disabled={!dataSource}
+              onClick={() => setBatchGenerateOpen(true)}
+            >
+              批量生成
             </Button>
             <Dropdown menu={{ items: [
               { key: 'folder', label: '保存到本地', icon: <FolderOpenOutlined />, onClick: handleSave },
@@ -324,15 +343,17 @@ function App() {
         <div className="app-main">
           <Toolbar onOpenDataImport={() => setDataImportOpen(true)} />
           <div className="app-content">
+            <DataPreview />
             <CanvasEditor />
             <div className="app-bottom">
               <PageManager />
             </div>
           </div>
-          <PropertyPanel />
+          <PropertyPanel onOpenDataImport={() => setDataImportOpen(true)} />
         </div>
 
         <DataImport open={dataImportOpen} onClose={() => setDataImportOpen(false)} />
+        <BatchGenerate open={batchGenerateOpen} onClose={() => setBatchGenerateOpen(false)} />
         <TemplateManager open={templateManagerOpen} onClose={() => setTemplateManagerOpen(false)} />
 
         <Modal title="新建模板" open={newTemplateOpen} onOk={handleNewTemplate} onCancel={() => setNewTemplateOpen(false)} okText="创建" width={400}>

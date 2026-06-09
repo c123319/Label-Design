@@ -256,8 +256,8 @@ export function useCanvasActions() {
       const dataURL = await generateQRCodeDataURL(value, 200);
       fabric.Image.fromURL(dataURL, (img) => {
         img.set({ left: left - 50, top: top - 50, scaleX: 0.5, scaleY: 0.5 });
-        (img as fabric.Object & { elementType?: string; qrValue?: string }).elementType = 'qrcode';
-        (img as fabric.Object & { qrValue?: string }).qrValue = value;
+        (img as fabric.Image & { elementType?: string; qrValue?: string }).elementType = 'qrcode';
+        (img as fabric.Image & { qrValue?: string }).qrValue = value;
         addObj(img);
       });
     } catch {
@@ -278,8 +278,9 @@ export function useCanvasActions() {
           scaleX: scale,
           scaleY: scale,
         });
-        (img as fabric.Object & { elementType?: string; barcodeValue?: string }).elementType = 'barcode';
-        (img as fabric.Object & { barcodeValue?: string }).barcodeValue = value;
+        (img as fabric.Image & { elementType?: string; barcodeValue?: string; barcodeFormat?: string }).elementType = 'barcode';
+        (img as fabric.Image & { barcodeValue?: string }).barcodeValue = value;
+        (img as fabric.Image & { barcodeFormat?: string }).barcodeFormat = format;
         addObj(img);
       });
     } catch {

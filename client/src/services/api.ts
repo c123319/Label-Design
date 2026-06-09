@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { ITemplate } from '@shared/types/template';
 import type { IApiResponse } from '@shared/types/api';
+import type { IDataSource, IRenderJob } from '@shared/types/datasource';
 
 const api = axios.create({
   baseURL: '/api',
@@ -42,6 +43,34 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+// ── 数据源 ──
+export const dataSourceApi = {
+  upload: (fileName: string, rows: Record<string, string | number>[], templateId?: string) =>
+    api.post<unknown, IApiResponse<IDataSource>>('/data-sources/upload-json', {
+      fileName,
+      rows,
+      templateId,
+    }),
+
+  get: (dataSourceId: string) =>
+    api.get<unknown, IApiResponse<IDataSource>>(`/data-sources/${dataSourceId}`),
+};
+
+// ── 渲染任务 ──
+export const renderJobApi = {
+  create: (data: {
+    templateId: string;
+    dataSourceId: string;
+    outputType?: string;
+    range?: { type: string };
+    options?: Record<string, unknown>;
+  }) =>
+    api.post<unknown, IApiResponse<{ jobId: string }>>('/render/jobs', data),
+
+  getStatus: (jobId: string) =>
+    api.get<unknown, IApiResponse<IRenderJob>>(`/render/jobs/${jobId}`),
 };
 
 // ── 批量生成 ──

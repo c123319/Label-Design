@@ -1,0 +1,27 @@
+.batch-generate-modal .batch-desc {
+  font-size: 13px;
+  color: var(--text-secondary, #4b5563);
+  margin-bottom: 16px;
+}
+
+.batch-generate-modal .validation-result {
+  margin-bottom: 16px;
+}
+
+.batch-generate-modal .validation-result .ant-list-item {
+  padding: 2px 0;
+  border: none;
+  font-size: 12px;
+}
+
+.batch-generate-modal .batch-progress {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.batch-generate-modal .batch-progress span {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}

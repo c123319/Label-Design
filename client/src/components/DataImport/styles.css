@@ -28,3 +28,23 @@
 .data-import-modal .placeholder-tags .ant-tag {
   cursor: pointer;
 }
+
+.data-import-modal .field-list-section {
+  margin-top: 12px;
+}
+
+.data-import-modal .field-list-section h4 {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.data-import-modal .field-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.data-import-modal .field-sample {
+  color: #8c8c8c;
+  font-size: 11px;
+}
