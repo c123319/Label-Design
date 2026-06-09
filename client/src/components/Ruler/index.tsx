@@ -1,10 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
+import { PX_PER_MM, RULER_SIZE, getTickInterval } from '@/utils/canvasMetrics';
 import './styles.css';
-
-const RULER_SIZE = 25;
-const PX_PER_MM = 300 / 25.4; // ≈ 11.811
 const HIGHLIGHT_COLOR = 'rgba(82, 196, 26, 0.35)';
 const HIGHLIGHT_BORDER_COLOR = 'rgba(82, 196, 26, 0.7)';
 const CURSOR_COLOR = 'rgba(22, 119, 255, 0.6)';
@@ -12,6 +10,17 @@ const TICK_COLOR = '#999';
 const TICK_COLOR_MAJOR = '#555';
 const LABEL_COLOR = '#666';
 const BG_COLOR = '#f5f5f5';
+
+/** 浮点安全的倍数判定：避免 mm % major 因浮点漂移返回接近 major 而非 0 */
+function isNearMultiple(value: number, interval: number, tolerance = 0.01): boolean {
+  return Math.abs(value - Math.round(value / interval) * interval) < tolerance;
+}
+
+/** 格式化刻度数字：major ≥ 1 显示整数，否则保留一位小数 */
+function formatTickLabel(mm: number, major: number): string {
+  if (major >= 1) return String(Math.round(mm));
+  return String(parseFloat(mm.toFixed(1)));
+}
 
 /** 获取选中元素的包围盒（画布坐标 px） */
 function getSelectionBounds(activeObjects: fabric.Object[]): {
@@ -44,22 +53,6 @@ function getSelectionBounds(activeObjects: fabric.Object[]): {
     if (b > maxY) maxY = b;
   }
   return { left: minX, top: minY, right: maxX, bottom: maxY };
-}
-
-/** 根据缩放级别确定合适的刻度间距（mm） */
-function getTickInterval(visualZoom: number): { major: number; minor: number } {
-  // visualZoom 是从画布坐标到屏幕像素的总缩放
-  const pixelsPerMajor = PX_PER_MM * visualZoom;
-  const intervals = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500];
-  let major = 10;
-  for (const iv of intervals) {
-    if (iv * pixelsPerMajor >= 50) {
-      major = iv;
-      break;
-    }
-  }
-  const minor = major / 5;
-  return { major, minor };
 }
 
 /**
@@ -123,8 +116,8 @@ function drawHorizontalRuler(
     const screenPx = canvasPx * scale + offset;
     if (screenPx < -1 || screenPx > width + 1) continue;
 
-    const isMajor = Math.abs(mm % major) < 0.001;
-    const isMid = Math.abs(mm % (major / 2)) < 0.001 && !isMajor;
+    const isMajor = isNearMultiple(mm, major);
+    const isMid = !isMajor && isNearMultiple(mm, major / 2);
 
     ctx.beginPath();
     ctx.strokeStyle = isMajor ? TICK_COLOR_MAJOR : TICK_COLOR;
@@ -143,11 +136,11 @@ function drawHorizontalRuler(
     ctx.stroke();
 
     // 主刻度数字
-    if (isMajor && Math.round(mm) >= 0) {
+    if (isMajor && mm >= -0.01) {
       ctx.fillStyle = LABEL_COLOR;
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(String(Math.round(mm)), screenPx, 12);
+      ctx.fillText(formatTickLabel(mm, major), screenPx, 12);
     }
   }
 
@@ -207,8 +200,8 @@ function drawVerticalRuler(
     const screenPx = canvasPx * scale + offset;
     if (screenPx < -1 || screenPx > height + 1) continue;
 
-    const isMajor = Math.abs(mm % major) < 0.001;
-    const isMid = Math.abs(mm % (major / 2)) < 0.001 && !isMajor;
+    const isMajor = isNearMultiple(mm, major);
+    const isMid = !isMajor && isNearMultiple(mm, major / 2);
 
     ctx.beginPath();
     ctx.strokeStyle = isMajor ? TICK_COLOR_MAJOR : TICK_COLOR;
@@ -227,14 +220,14 @@ function drawVerticalRuler(
     ctx.stroke();
 
     // 主刻度数字（垂直标尺文字旋转）
-    if (isMajor && Math.round(mm) >= 0) {
+    if (isMajor && mm >= -0.01) {
       ctx.fillStyle = LABEL_COLOR;
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';
       ctx.save();
       ctx.translate(10, screenPx);
       ctx.rotate(-Math.PI / 2);
-      ctx.fillText(String(Math.round(mm)), 0, 0);
+      ctx.fillText(formatTickLabel(mm, major), 0, 0);
       ctx.restore();
     }
   }
