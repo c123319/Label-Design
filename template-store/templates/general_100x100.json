@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1.0",
+  "templateId": "general_100x100",
+  "name": "通用标签模板",
+  "category": "general",
+  "canvas": {
+    "width": 100,
+    "height": 100,
+    "unit": "mm",
+    "background": "#FFFFFF",
+    "gridSize": 2,
+    "showGrid": true
+  },
+  "objects": [
+    {
+      "id": "el_text_title",
+      "type": "text",
+      "x": 8,
+      "y": 8,
+      "width": 84,
+      "height": 8,
+      "content": "产品名称：{{productName}}",
+      "style": { "fontSize": 14, "fontWeight": "bold", "color": "#000000" },
+      "binding": { "enabled": true, "fields": ["productName"] }
+    },
+    {
+      "id": "el_text_spec",
+      "type": "text",
+      "x": 8,
+      "y": 20,
+      "content": "规格：{{spec}}",
+      "style": { "fontSize": 12, "color": "#333333" },
+      "binding": { "enabled": true, "fields": ["spec"] }
+    },
+    {
+      "id": "el_text_date",
+      "type": "text",
+      "x": 8,
+      "y": 30,
+      "content": "生产日期：{{productionDate}}",
+      "style": { "fontSize": 12, "color": "#333333" },
+      "binding": { "enabled": true, "fields": ["productionDate"] }
+    },
+    {
+      "id": "el_barcode_sn",
+      "type": "barcode",
+      "barcodeType": "CODE128",
+      "x": 8,
+      "y": 55,
+      "width": 70,
+      "height": 15,
+      "value": "{{serialNo}}",
+      "showText": true,
+      "binding": { "enabled": true, "fieldCode": "serialNo" }
+    },
+    {
+      "id": "el_border",
+      "type": "rect",
+      "x": 2,
+      "y": 2,
+      "width": 96,
+      "height": 96,
+      "style": { "fill": "transparent", "stroke": "#CCCCCC", "strokeWidth": 1 }
+    }
+  ]
+}

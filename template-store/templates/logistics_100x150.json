@@ -1,0 +1,98 @@
+{
+  "schemaVersion": "1.0",
+  "templateId": "logistics_100x150",
+  "name": "物流面单",
+  "category": "logistics",
+  "canvas": {
+    "width": 100,
+    "height": 150,
+    "unit": "mm",
+    "background": "#FFFFFF"
+  },
+  "objects": [
+    {
+      "id": "el_header",
+      "type": "text",
+      "x": 5,
+      "y": 5,
+      "content": "收",
+      "style": { "fontSize": 24, "fontWeight": "bold", "color": "#FFFFFF" }
+    },
+    {
+      "id": "el_header_bg",
+      "type": "rect",
+      "x": 3,
+      "y": 3,
+      "width": 12,
+      "height": 12,
+      "style": { "fill": "#1677FF", "stroke": "#1677FF" }
+    },
+    {
+      "id": "el_receiver",
+      "type": "text",
+      "x": 18,
+      "y": 5,
+      "content": "{{receiverName}} {{receiverPhone}}",
+      "style": { "fontSize": 14, "fontWeight": "bold", "color": "#000000" },
+      "binding": { "enabled": true, "fields": ["receiverName", "receiverPhone"] }
+    },
+    {
+      "id": "el_address",
+      "type": "text",
+      "x": 5,
+      "y": 18,
+      "width": 90,
+      "content": "{{receiverAddress}}",
+      "style": { "fontSize": 11, "color": "#333333" },
+      "binding": { "enabled": true, "fields": ["receiverAddress"] }
+    },
+    {
+      "id": "el_divider1",
+      "type": "rect",
+      "x": 3,
+      "y": 35,
+      "width": 94,
+      "height": 0.3,
+      "style": { "fill": "#E8E8E8", "stroke": "#E8E8E8" }
+    },
+    {
+      "id": "el_sender",
+      "type": "text",
+      "x": 5,
+      "y": 40,
+      "content": "寄：{{senderName}} {{senderPhone}}",
+      "style": { "fontSize": 11, "color": "#666666" },
+      "binding": { "enabled": true, "fields": ["senderName", "senderPhone"] }
+    },
+    {
+      "id": "el_tracking",
+      "type": "text",
+      "x": 5,
+      "y": 55,
+      "content": "运单号：{{trackingNo}}",
+      "style": { "fontSize": 12, "fontWeight": "bold", "color": "#000000" },
+      "binding": { "enabled": true, "fieldCode": "trackingNo" }
+    },
+    {
+      "id": "el_barcode_tracking",
+      "type": "barcode",
+      "barcodeType": "CODE128",
+      "x": 5,
+      "y": 68,
+      "width": 90,
+      "height": 18,
+      "value": "{{trackingNo}}",
+      "binding": { "enabled": true, "fieldCode": "trackingNo" }
+    },
+    {
+      "id": "el_qr_tracking",
+      "type": "qrcode",
+      "x": 70,
+      "y": 110,
+      "width": 25,
+      "height": 25,
+      "value": "{{trackingNo}}",
+      "binding": { "enabled": true, "fieldCode": "trackingNo" }
+    }
+  ]
+}

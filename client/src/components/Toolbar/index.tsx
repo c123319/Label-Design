@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Input, Select, Modal, message } from 'antd';
+import { useCallback, useMemo, useState } from 'react';
+import { Input, Select, Modal, message, Spin, Empty } from 'antd';
 import {
   AppstoreOutlined,
   FileTextOutlined,
@@ -13,18 +13,15 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
-import { useFilesystemStore } from '@/store/useFilesystemStore';
-import { templateApi } from '@/services/api';
-import { fileSystemStorage } from '@/services/fileSystemStorage';
-import type { ITemplate } from '@shared/types/template';
 import { truncateText } from '@/utils/renderTemplate';
+import { useTemplateStore } from '@/hooks/useTemplateStore';
+import { templateStoreService } from '@/services/templateStore';
 import { useCanvasActions } from './useCanvasActions';
 import {
   NAV_ITEMS,
   WARNING_PRESETS,
   MATERIAL_CATEGORIES,
   REGULATORY_ICONS,
-  TEMPLATE_PRESETS,
   type SidebarTab,
 } from './constants';
 import './styles.css';
@@ -90,7 +87,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   const [activeTab, setActiveTab] = useState<SidebarTab>('component');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [templateFilter, setTemplateFilter] = useState('featured');
-  const [templates, setTemplates] = useState<ITemplate[]>([]);
+  const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null);
   const [expandedCategory, setExpandedCategory] = useState<string | null>('法案标');
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrValue, setQrValue] = useState('{{qr_data}}');
@@ -99,34 +96,27 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const { sidebarCollapsed, toggleSidebar, loadFromJSON, setCurrentTemplateId, dataSource } = useEditorStore();
-  const { isConnected } = useFilesystemStore();
   const actions = useCanvasActions();
+  const templateStore = useTemplateStore(activeTab === 'template');
 
-  const loadTemplates = useCallback(async () => {
-    const list: ITemplate[] = [];
-    if (isConnected) {
-      try {
-        const local = await fileSystemStorage.list();
-        list.push(...local);
-      } catch { /* ignore */ }
-    }
+  const filteredEntries = useMemo(() => {
+    const byCategory = templateStore.filterByCategory(templateFilter);
+    return templateStoreService.search(byCategory, searchKeyword);
+  }, [templateStore.entries, templateFilter, searchKeyword]);
+
+  const handleLoadStoreTemplate = useCallback(async (entry: typeof filteredEntries[0]) => {
+    setLoadingTemplateId(entry.id);
     try {
-      const res = await templateApi.list();
-      const cloud = (res as { data?: ITemplate[] }).data || (Array.isArray(res) ? res : []);
-      list.push(...cloud);
-    } catch { /* ignore */ }
-    setTemplates(list);
-  }, [isConnected]);
-
-  useEffect(() => {
-    if (activeTab === 'template') loadTemplates();
-  }, [activeTab, loadTemplates]);
-
-  const handleLoadTemplate = (template: ITemplate) => {
-    loadFromJSON(template);
-    setCurrentTemplateId(template.id);
-    message.success(`已加载: ${template.name}`);
-  };
+      const template = await templateStore.loadTemplate(entry);
+      if (template) {
+        loadFromJSON(template);
+        setCurrentTemplateId(template.id);
+        message.success(`已加载: ${template.name}`);
+      }
+    } finally {
+      setLoadingTemplateId(null);
+    }
+  }, [templateStore, loadFromJSON, setCurrentTemplateId]);
 
   const renderSectionHeader = (title: string, more?: boolean) => (
     <div className="panel-section-header">
@@ -214,40 +204,58 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
         className="panel-select"
         value={templateFilter}
         onChange={setTemplateFilter}
-        options={[
-          { value: 'featured', label: '精选' },
-          { value: 'recent', label: '最近使用' },
-          { value: 'mine', label: '我的模板' },
-        ]}
+        loading={templateStore.loading}
+        options={templateStore.categories.map((c) => ({
+          value: c.code,
+          label: c.name,
+        }))}
       />
-      <div className="template-list">
-        {templates
-          .filter((t) => !searchKeyword || t.name?.includes(searchKeyword))
-          .map((t) => (
-            <button key={t.id} type="button" className="template-card" onClick={() => handleLoadTemplate(t)}>
+      {templateStore.loading ? (
+        <div className="template-store-loading"><Spin tip="加载模板库..." /></div>
+      ) : templateStore.error ? (
+        <Empty
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+          description={templateStore.error}
+        >
+          <button type="button" className="panel-more" onClick={() => templateStore.reload()}>
+            重新加载
+          </button>
+        </Empty>
+      ) : (
+        <div className="template-list">
+          {filteredEntries.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className="template-card"
+              disabled={loadingTemplateId === entry.id}
+              onClick={() => handleLoadStoreTemplate(entry)}
+            >
               <div className="template-thumb">
-                <span>{t.name?.slice(0, 2) || '模板'}</span>
+                <img
+                  src={templateStore.getThumbnailUrl(entry)}
+                  alt={entry.name}
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <span className="template-thumb-fallback">{entry.name.slice(0, 2)}</span>
               </div>
               <div className="template-info">
-                <div className="template-name">{t.name || '未命名模板'}</div>
-                <div className="template-size">{t.pages?.[0]?.width || 0}×{t.pages?.[0]?.height || 0}px</div>
+                <div className="template-name">{entry.name}</div>
+                <div className="template-size">
+                  {entry.width}×{entry.height}{entry.unit}
+                  {entry.featured && <span className="template-badge">精选</span>}
+                </div>
               </div>
             </button>
           ))}
-        {TEMPLATE_PRESETS
-          .filter((t) => !searchKeyword || t.name.includes(searchKeyword))
-          .map((t) => (
-            <button key={t.name} type="button" className="template-card" onClick={() => message.info('请从模板管理创建或使用已有模板')}>
-              <div className="template-thumb preset">
-                <span>{t.name.slice(0, 2)}</span>
-              </div>
-              <div className="template-info">
-                <div className="template-name">{t.name}</div>
-                <div className="template-size">{t.size}</div>
-              </div>
-            </button>
-          ))}
-      </div>
+          {filteredEntries.length === 0 && (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配模板" />
+          )}
+        </div>
+      )}
     </div>
   );
 

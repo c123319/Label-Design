@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "templateId": "crossborder_100x70",
+  "name": "跨境警示标签",
+  "category": "crossborder",
+  "canvas": {
+    "width": 100,
+    "height": 70,
+    "unit": "mm",
+    "background": "#FFFFFF"
+  },
+  "objects": [
+    {
+      "id": "el_warning_icon",
+      "type": "text",
+      "x": 5,
+      "y": 5,
+      "content": "⚠",
+      "style": { "fontSize": 20, "color": "#FAAD14" }
+    },
+    {
+      "id": "el_warning_en",
+      "type": "text",
+      "x": 5,
+      "y": 14,
+      "width": 90,
+      "content": "WARNING: TO AVOID DANGER OF SUFFOCATION, KEEP THIS PLASTIC BAG AWAY FROM BABIES AND CHILDREN.",
+      "style": { "fontSize": 8, "color": "#000000", "fontFamily": "Arial, sans-serif" }
+    },
+    {
+      "id": "el_warning_cn",
+      "type": "text",
+      "x": 5,
+      "y": 32,
+      "width": 90,
+      "content": "警告：为了避免窒息的危险，请将此塑料袋远离婴儿和儿童。",
+      "style": { "fontSize": 9, "color": "#000000" }
+    },
+    {
+      "id": "el_ce",
+      "type": "text",
+      "x": 5,
+      "y": 52,
+      "content": "CE",
+      "style": { "fontSize": 14, "fontWeight": "bold", "color": "#000000", "fontFamily": "Arial, sans-serif" }
+    },
+    {
+      "id": "el_product_info",
+      "type": "text",
+      "x": 20,
+      "y": 52,
+      "content": "{{productName}} | {{sku}}",
+      "style": { "fontSize": 9, "color": "#666666" },
+      "binding": { "enabled": true, "fields": ["productName", "sku"] }
+    },
+    {
+      "id": "el_barcode",
+      "type": "barcode",
+      "barcodeType": "CODE128",
+      "x": 5,
+      "y": 58,
+      "width": 60,
+      "height": 10,
+      "value": "{{barcode}}",
+      "binding": { "enabled": true, "fieldCode": "barcode" }
+    }
+  ]
+}

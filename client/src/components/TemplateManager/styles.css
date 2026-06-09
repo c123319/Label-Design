@@ -66,3 +66,116 @@
   color: #389e0d;
   font-weight: 500;
 }
+
+/* ── 远程模板库 ── */
+.template-manager .library-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.template-manager .library-toolbar .ant-input-affix-wrapper {
+  flex: 1;
+}
+
+.template-manager .library-version {
+  font-size: 11px;
+  color: #bfbfbf;
+  margin-bottom: 8px;
+}
+
+.template-manager .library-loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.template-manager .library-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.template-manager .library-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #fff;
+  text-align: left;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  padding: 0;
+}
+
+.template-manager .library-card:hover {
+  border-color: #1677ff;
+  box-shadow: 0 2px 8px rgba(22, 119, 255, 0.12);
+}
+
+.template-manager .library-card:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.template-manager .library-card-thumb {
+  height: 100px;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.template-manager .library-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.template-manager .library-card-info {
+  padding: 8px 10px;
+}
+
+.template-manager .library-card-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-manager .library-card-meta {
+  font-size: 11px;
+  color: #8c8c8c;
+  margin-top: 2px;
+}
+
+.template-manager .library-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 4px;
+  font-size: 10px;
+  color: #1677ff;
+  background: #e6f4ff;
+  border-radius: 2px;
+}
+
+.template-manager .library-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.template-manager .library-tag {
+  font-size: 10px;
+  color: #8c8c8c;
+  background: #f5f5f5;
+  padding: 0 4px;
+  border-radius: 2px;
+}

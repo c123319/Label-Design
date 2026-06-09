@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0",
+  "templateId": "warehouse_50x30",
+  "name": "仓储库位标签",
+  "category": "warehouse",
+  "canvas": {
+    "width": 50,
+    "height": 30,
+    "unit": "mm",
+    "background": "#FFFBE6"
+  },
+  "objects": [
+    {
+      "id": "el_location",
+      "type": "text",
+      "x": 3,
+      "y": 3,
+      "width": 44,
+      "content": "{{locationCode}}",
+      "style": { "fontSize": 18, "fontWeight": "bold", "color": "#000000", "textAlign": "center" },
+      "binding": { "enabled": true, "fieldCode": "locationCode" }
+    },
+    {
+      "id": "el_zone",
+      "type": "text",
+      "x": 3,
+      "y": 16,
+      "width": 44,
+      "content": "{{zone}}-{{aisle}}-{{shelf}}",
+      "style": { "fontSize": 9, "color": "#666666", "textAlign": "center" },
+      "binding": { "enabled": true, "fields": ["zone", "aisle", "shelf"] }
+    },
+    {
+      "id": "el_barcode_loc",
+      "type": "barcode",
+      "barcodeType": "CODE128",
+      "x": 5,
+      "y": 22,
+      "width": 40,
+      "height": 7,
+      "value": "{{locationCode}}",
+      "binding": { "enabled": true, "fieldCode": "locationCode" }
+    }
+  ]
+}

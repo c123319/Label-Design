@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
-import { Modal, Button, Tabs, message, Empty, Tooltip } from 'antd';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { Modal, Button, Tabs, message, Empty, Tooltip, Input, Select, Spin } from 'antd';
+import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
   DeleteOutlined,
   DownloadOutlined,
@@ -12,7 +13,10 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { useFilesystemStore } from '@/store/useFilesystemStore';
 import { templateApi } from '@/services/api';
 import { fileSystemStorage } from '@/services/fileSystemStorage';
+import { templateStoreService } from '@/services/templateStore';
+import { useTemplateStore } from '@/hooks/useTemplateStore';
 import type { ITemplate } from '@shared/types/template';
+import type { ITemplateStoreEntry } from '@shared/types/templateStore';
 import './styles.css';
 
 interface TemplateManagerProps {
@@ -24,7 +28,13 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
   const { loadFromJSON, exportAsJSON, setCurrentTemplateId } = useEditorStore();
   const [cloudTemplates, setCloudTemplates] = useState<ITemplate[]>([]);
   const [localTemplates, setLocalTemplates] = useState<ITemplate[]>([]);
+  const [activeTab, setActiveTab] = useState('library');
+  const [libraryFilter, setLibraryFilter] = useState('featured');
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [loadingLibraryId, setLoadingLibraryId] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+
+  const templateStore = useTemplateStore(open && activeTab === 'library');
 
   const {
     directoryName, isConnected, isSupported, isConnecting,
@@ -51,6 +61,27 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
       setCloudTemplates([]);
     }
   }, []);
+
+  const libraryEntries = useMemo(() => {
+    const byCategory = templateStore.filterByCategory(libraryFilter);
+    return templateStoreService.search(byCategory, librarySearch);
+  }, [templateStore.entries, libraryFilter, librarySearch]);
+
+  /** 从远程模板库加载 */
+  const handleLoadFromStore = useCallback(async (entry: ITemplateStoreEntry) => {
+    setLoadingLibraryId(entry.id);
+    try {
+      const template = await templateStore.loadTemplate(entry);
+      if (template) {
+        loadFromJSON(template);
+        setCurrentTemplateId(template.id);
+        message.success(`已加载模板: ${template.name}`);
+        onClose();
+      }
+    } finally {
+      setLoadingLibraryId(null);
+    }
+  }, [templateStore, loadFromJSON, setCurrentTemplateId, onClose]);
 
   /** 加载模板到画布 */
   const handleLoad = useCallback((template: ITemplate) => {
@@ -164,6 +195,7 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
 
   /** Tab 切换时加载对应数据 */
   const handleTabChange = useCallback((key: string) => {
+    setActiveTab(key);
     if (key === 'local') loadLocalTemplates();
     else if (key === 'cloud') loadCloudTemplates();
   }, [loadLocalTemplates, loadCloudTemplates]);
@@ -171,6 +203,7 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
   /** 打开时加载数据 */
   const handleAfterOpenChange = useCallback((visible: boolean) => {
     if (visible) {
+      setActiveTab('library');
       loadLocalTemplates();
       loadCloudTemplates();
     }
@@ -202,7 +235,7 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
         <Button key="export" icon={<DownloadOutlined />} onClick={handleExportJSON}>导出当前</Button>,
         <Button key="close" onClick={onClose}>关闭</Button>,
       ]}
-      width={560}
+      width={720}
       className="template-manager"
       afterOpenChange={handleAfterOpenChange}
     >
@@ -215,9 +248,91 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
       />
 
       <Tabs
-        defaultActiveKey="local"
+        activeKey={activeTab}
         onChange={handleTabChange}
         items={[
+          {
+            key: 'library',
+            label: '📚 模板库',
+            children: (
+              <>
+                <div className="library-toolbar">
+                  <Input
+                    prefix={<SearchOutlined />}
+                    placeholder="搜索模板"
+                    value={librarySearch}
+                    onChange={(e) => setLibrarySearch(e.target.value)}
+                    allowClear
+                  />
+                  <Select
+                    value={libraryFilter}
+                    onChange={setLibraryFilter}
+                    loading={templateStore.loading}
+                    options={templateStore.categories.map((c) => ({
+                      value: c.code,
+                      label: c.name,
+                    }))}
+                  />
+                  <Tooltip title="刷新模板库">
+                    <Button
+                      icon={<ReloadOutlined />}
+                      loading={templateStore.loading}
+                      onClick={() => templateStore.reload()}
+                    />
+                  </Tooltip>
+                </div>
+                {templateStore.version && (
+                  <div className="library-version">版本 {templateStore.version}</div>
+                )}
+                {templateStore.loading ? (
+                  <div className="library-loading"><Spin tip="加载模板库..." /></div>
+                ) : templateStore.error ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={templateStore.error}
+                  >
+                    <Button onClick={() => templateStore.reload()}>重新加载</Button>
+                  </Empty>
+                ) : libraryEntries.length === 0 ? (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配模板" />
+                ) : (
+                  <div className="library-grid">
+                    {libraryEntries.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        className="library-card"
+                        disabled={loadingLibraryId === entry.id}
+                        onClick={() => handleLoadFromStore(entry)}
+                      >
+                        <div className="library-card-thumb">
+                          <img
+                            src={templateStore.getThumbnailUrl(entry)}
+                            alt={entry.name}
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="library-card-info">
+                          <div className="library-card-name">{entry.name}</div>
+                          <div className="library-card-meta">
+                            {entry.width}×{entry.height}{entry.unit}
+                            {entry.featured && <span className="library-badge">精选</span>}
+                          </div>
+                          {entry.tags && entry.tags.length > 0 && (
+                            <div className="library-card-tags">
+                              {entry.tags.slice(0, 3).map((tag) => (
+                                <span key={tag} className="library-tag">{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ),
+          },
           {
             key: 'local',
             label: '📁 本地模板',

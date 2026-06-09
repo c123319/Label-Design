@@ -1,0 +1,9 @@
+[
+  { "code": "featured", "name": "精选" },
+  { "code": "general", "name": "通用" },
+  { "code": "logistics", "name": "物流" },
+  { "code": "product", "name": "商品" },
+  { "code": "food", "name": "食品" },
+  { "code": "crossborder", "name": "跨境" },
+  { "code": "warehouse", "name": "仓储" }
+]

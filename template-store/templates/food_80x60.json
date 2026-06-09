@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "templateId": "food_80x60",
+  "name": "食品合格证",
+  "category": "food",
+  "canvas": {
+    "width": 80,
+    "height": 60,
+    "unit": "mm",
+    "background": "#FFFFFF"
+  },
+  "objects": [
+    {
+      "id": "el_title",
+      "type": "text",
+      "x": 5,
+      "y": 5,
+      "width": 70,
+      "content": "产品合格证",
+      "style": { "fontSize": 16, "fontWeight": "bold", "color": "#000000", "textAlign": "center" }
+    },
+    {
+      "id": "el_product",
+      "type": "text",
+      "x": 5,
+      "y": 16,
+      "content": "品名：{{productName}}",
+      "style": { "fontSize": 11, "color": "#333333" },
+      "binding": { "enabled": true, "fieldCode": "productName" }
+    },
+    {
+      "id": "el_batch",
+      "type": "text",
+      "x": 5,
+      "y": 24,
+      "content": "批号：{{batchNo}}",
+      "style": { "fontSize": 11, "color": "#333333" },
+      "binding": { "enabled": true, "fieldCode": "batchNo" }
+    },
+    {
+      "id": "el_date",
+      "type": "text",
+      "x": 5,
+      "y": 32,
+      "content": "生产日期：{{productionDate}}",
+      "style": { "fontSize": 11, "color": "#333333" },
+      "binding": { "enabled": true, "fieldCode": "productionDate" }
+    },
+    {
+      "id": "el_expiry",
+      "type": "text",
+      "x": 5,
+      "y": 40,
+      "content": "保质期至：{{expiryDate}}",
+      "style": { "fontSize": 11, "color": "#333333" },
+      "binding": { "enabled": true, "fieldCode": "expiryDate" }
+    },
+    {
+      "id": "el_cert",
+      "type": "text",
+      "x": 5,
+      "y": 50,
+      "content": "检验员：{{inspector}}  合格",
+      "style": { "fontSize": 10, "color": "#52C41A", "fontWeight": "bold" },
+      "binding": { "enabled": true, "fieldCode": "inspector" }
+    }
+  ]
+}
