@@ -1,96 +1,466 @@
 .sidebar {
   display: flex;
-  flex-direction: column;
-  background: #fafafa;
-  border-right: 1px solid #e8e8e8;
-  transition: width 0.2s ease;
-  overflow: hidden;
   flex-shrink: 0;
-}
-
-.sidebar.collapsed {
-  width: 48px;
+  height: 100%;
+  background: #f5f5f5;
+  border-right: 1px solid #e8e8e8;
+  overflow: hidden;
 }
 
 .sidebar.expanded {
-  width: 110px;
+  width: 316px;
 }
 
-.sidebar .sidebar-tools {
+.sidebar.collapsed {
+  width: 56px;
+}
+
+/* ── 导航栏 ── */
+.sidebar-nav {
+  width: 56px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f0f0f0;
+  border-right: 1px solid #e8e8e8;
+}
+
+.sidebar-nav-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 6px 4px;
-  gap: 1px;
+  padding: 4px 0;
   overflow-y: auto;
 }
 
-.sidebar .tool-item {
+.sidebar-nav-bottom {
+  padding: 4px 0 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.nav-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
   width: 100%;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 8px 4px;
   border: none;
   background: transparent;
   color: #595959;
   cursor: pointer;
-  font-size: 13px;
   transition: all 0.15s;
-  gap: 6px;
+}
+
+.nav-item:hover {
+  color: #333;
+  background: #e8e8e8;
+}
+
+.nav-item.active {
+  color: #52c41a;
+  background: #fff;
+}
+
+.nav-item.active .nav-icon {
+  color: #52c41a;
+}
+
+.nav-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.nav-label {
+  font-size: 10px;
+  line-height: 1.2;
   white-space: nowrap;
 }
 
-.sidebar .tool-item:hover {
-  background: #e6f4ff;
-  color: #1677ff;
+/* ── 内容面板 ── */
+.sidebar-panel {
+  flex: 1;
+  min-width: 0;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.sidebar .tool-item .icon {
-  width: 28px;
-  height: 28px;
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.panel-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 0 8px;
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.panel-section-header:first-child {
+  margin-top: 0;
+}
+
+.panel-more {
+  border: none;
+  background: none;
+  color: #bfbfbf;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.panel-more:hover {
+  color: #52c41a;
+}
+
+.panel-search {
+  margin-bottom: 8px;
+  border-radius: 16px;
+}
+
+.panel-select {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+/* ── 网格布局 ── */
+.panel-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.panel-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.panel-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.panel-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.panel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #595959;
+  font-size: 11px;
+  transition: all 0.15s;
+  min-height: 72px;
+}
+
+.panel-card:hover {
+  border-color: #52c41a;
+  color: #52c41a;
+}
+
+.panel-card-icon {
+  font-size: 22px;
+  color: #8c8c8c;
+}
+
+.panel-card:hover .panel-card-icon {
+  color: #52c41a;
+}
+
+.panel-text-preview {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.panel-text-preview.h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.panel-text-preview.h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.panel-code-preview {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: monospace;
+  letter-spacing: -1px;
+}
+
+.panel-code-preview.qr {
+  font-size: 20px;
+}
+
+.panel-shape-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-  flex-shrink: 0;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 6px;
+  transition: all 0.15s;
 }
 
-.sidebar .tool-item .label {
-  font-size: 12px;
+.panel-shape-btn:hover {
+  border-color: #52c41a;
+  background: #f6ffed;
+}
+
+.shape-preview {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── 模板列表 ── */
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-card {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.template-card:hover {
+  border-color: #52c41a;
+}
+
+.template-thumb {
+  width: 64px;
+  height: 48px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #8c8c8c;
+  font-weight: 600;
+}
+
+.template-thumb.preset {
+  background: linear-gradient(135deg, #f6ffed 0%, #e6f7ff 100%);
+  color: #52c41a;
+}
+
+.template-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.template-name {
+  font-size: 13px;
+  color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.sidebar.collapsed .tool-item .label {
-  display: none;
+.template-size {
+  font-size: 11px;
+  color: #bfbfbf;
+  margin-top: 4px;
 }
 
-.sidebar .divider {
-  width: 80%;
-  height: 1px;
-  background: #e8e8e8;
-  margin: 4px 0;
+/* ── 警示语列表 ── */
+.warning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.sidebar .toggle-btn {
+.warning-item {
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+}
+
+.warning-item:hover {
+  border-color: #52c41a;
+}
+
+.warning-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.warning-text {
+  font-size: 10px;
+  color: #8c8c8c;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 素材分类 ── */
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
-  height: 32px;
+  padding: 10px 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.category-header .anticon {
+  font-size: 10px;
+  color: #bfbfbf;
+  transition: transform 0.2s;
+}
+
+.category-header .anticon.expanded {
+  transform: rotate(90deg);
+}
+
+.category-list {
+  margin-top: 4px;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  background: none;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  color: #595959;
+  cursor: pointer;
+  text-align: left;
+}
+
+.category-item:hover {
+  color: #52c41a;
+}
+
+.category-item .anticon {
+  font-size: 10px;
+  color: #d9d9d9;
+}
+
+.material-icons {
+  margin: 8px 0;
+}
+
+/* ── 图标库 ── */
+.icon-grid {
+  margin-top: 8px;
+}
+
+.icon-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  border-top: 1px solid #e8e8e8;
-  background: #f5f5f5;
-  color: #8c8c8c;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #333;
   cursor: pointer;
-  font-size: 12px;
+  padding: 4px;
   transition: all 0.15s;
-  flex-shrink: 0;
 }
 
-.sidebar .toggle-btn:hover {
-  background: #e6f4ff;
-  color: #1677ff;
+.icon-item:hover {
+  border-color: #52c41a;
+  color: #52c41a;
+}
+
+/* ── 占位面板 ── */
+.panel-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.panel-placeholder-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.panel-placeholder-desc {
+  font-size: 12px;
+  color: #8c8c8c;
+  line-height: 1.6;
+}
+
+/* ── 快捷键 ── */
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #595959;
+}
+
+.shortcut-row kbd {
+  background: #f5f5f5;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-family: inherit;
 }
