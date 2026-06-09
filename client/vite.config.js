@@ -43,6 +43,7 @@ function templateStorePlugin() {
     };
 }
 export default defineConfig({
+    base: '/Label-Design/',
     plugins: [react(), templateStorePlugin()],
     resolve: {
         alias: {

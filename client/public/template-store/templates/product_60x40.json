@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "1.0",
+  "templateId": "product_60x40",
+  "name": "商品条码标签",
+  "category": "product",
+  "canvas": {
+    "width": 60,
+    "height": 40,
+    "unit": "mm",
+    "background": "#FFFFFF"
+  },
+  "objects": [
+    {
+      "id": "el_product_name",
+      "type": "text",
+      "x": 3,
+      "y": 3,
+      "width": 54,
+      "content": "{{productName}}",
+      "style": { "fontSize": 10, "fontWeight": "bold", "color": "#000000", "textAlign": "center" },
+      "binding": { "enabled": true, "fieldCode": "productName" }
+    },
+    {
+      "id": "el_barcode_ean",
+      "type": "barcode",
+      "barcodeType": "EAN13",
+      "x": 5,
+      "y": 12,
+      "width": 50,
+      "height": 14,
+      "value": "{{barcode}}",
+      "binding": { "enabled": true, "fieldCode": "barcode" }
+    },
+    {
+      "id": "el_price",
+      "type": "text",
+      "x": 3,
+      "y": 30,
+      "content": "¥{{price}}",
+      "style": { "fontSize": 14, "fontWeight": "bold", "color": "#E53935" },
+      "binding": { "enabled": true, "fieldCode": "price" }
+    },
+    {
+      "id": "el_sku",
+      "type": "text",
+      "x": 30,
+      "y": 32,
+      "content": "SKU: {{sku}}",
+      "style": { "fontSize": 8, "color": "#999999" },
+      "binding": { "enabled": true, "fieldCode": "sku" }
+    }
+  ]
+}
