@@ -4,6 +4,7 @@ import type { ITemplate, ITemplatePage } from '@shared/types/template';
 import type { IDataSource } from '@shared/types/datasource';
 import { restoreTextObjectsEditability } from '@/utils/textEditing';
 import { applyPreviewToCanvas, clearPreviewCache } from '@/utils/previewRender';
+import { canvasToJSON } from '@/utils/fabricCustomProps';
 
 /** 默认模板尺寸 (100x70mm 标签，300dpi → 1181x827px) */
 const DEFAULT_SIZE = { width: 1181, height: 827 };
@@ -299,7 +300,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   enterPreviewMode: async () => {
     const { canvas, dataSource, previewMode } = get();
     if (!canvas || !dataSource || dataSource.rows.length === 0 || previewMode) return;
-    const snapshot = JSON.stringify(canvas.toJSON());
+    const snapshot = JSON.stringify(canvasToJSON(canvas));
     set({ previewMode: true, previewSnapshot: snapshot, currentPreviewIndex: 0 });
     clearPreviewCache(canvas);
     await applyPreviewToCanvas(canvas, dataSource.rows[0]);

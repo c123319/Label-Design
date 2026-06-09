@@ -17,6 +17,7 @@ import { useFilesystemStore } from '@/store/useFilesystemStore';
 import { templateApi } from '@/services/api';
 import { fileSystemStorage } from '@/services/fileSystemStorage';
 import type { ITemplate } from '@shared/types/template';
+import { truncateText } from '@/utils/renderTemplate';
 import { useCanvasActions } from './useCanvasActions';
 import {
   NAV_ITEMS,
@@ -315,44 +316,77 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   );
 
   const renderDatasourcePanel = () => (
-    <div className="panel-scroll">
+    <div className="panel-scroll datasource-panel">
       {dataSource ? (
         <div className="datasource-panel-loaded">
-          <div className="panel-section-header"><span>当前数据源</span></div>
-          <div className="datasource-info">
-            <div className="datasource-file">{dataSource.fileName || '本地数据'}</div>
-            <div className="datasource-meta">{dataSource.totalRows} 条 · {dataSource.fields.length} 个字段</div>
-          </div>
-          <div className="panel-section-header" style={{ marginTop: 12 }}><span>字段列表</span></div>
-          <div className="datasource-fields">
-            {dataSource.fields.map((f) => (
-              <div key={f.fieldCode} className="datasource-field-row">
-                <span className="datasource-field-name">{f.fieldName}</span>
-                {f.sampleValue && <span className="datasource-field-sample">{f.sampleValue}</span>}
+          <div className="datasource-summary-card">
+            <div className="datasource-summary-icon">
+              <DatabaseOutlined />
+            </div>
+            <div className="datasource-summary-body">
+              <div className="datasource-summary-label">当前数据源</div>
+              <div className="datasource-file" title={dataSource.fileName || '本地数据'}>
+                {dataSource.fileName || '本地数据'}
               </div>
-            ))}
+              <div className="datasource-meta">
+                <span className="datasource-stat">{dataSource.totalRows} 条</span>
+                <span className="datasource-stat">{dataSource.fields.length} 个字段</span>
+                {dataSource.fileType && (
+                  <span className="datasource-stat datasource-stat-type">
+                    {dataSource.fileType.toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
+
+          <div className="datasource-fields-section">
+            <div className="datasource-fields-header">
+              <span>字段列表</span>
+              <span className="datasource-fields-count">{dataSource.fields.length}</span>
+            </div>
+            <div className="datasource-fields">
+              {dataSource.fields.map((f) => (
+                <div key={f.fieldCode} className="datasource-field-row">
+                  <span className="datasource-field-name" title={f.fieldName}>
+                    {f.fieldName}
+                  </span>
+                  {f.sampleValue ? (
+                    <span className="datasource-field-sample" title={String(f.sampleValue)}>
+                      {truncateText(String(f.sampleValue), 24)}
+                    </span>
+                  ) : (
+                    <span className="datasource-field-empty">—</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <button
             type="button"
-            className="panel-card"
-            style={{ marginTop: 16, width: '100%' }}
+            className="datasource-action-btn"
             onClick={() => onOpenDataImport?.()}
           >
-            <UploadOutlined className="panel-card-icon" />
+            <UploadOutlined />
             <span>重新上传</span>
           </button>
         </div>
       ) : (
-        <div className="panel-placeholder" style={{ minHeight: 200 }}>
+        <div className="datasource-empty">
+          <div className="datasource-empty-icon">
+            <DatabaseOutlined />
+          </div>
           <div className="panel-placeholder-title">暂无数据源</div>
-          <div className="panel-placeholder-desc">上传 Excel 或 CSV 文件，将数据字段绑定到标签元素。</div>
+          <div className="panel-placeholder-desc">
+            上传 Excel 或 CSV 文件，将数据字段绑定到标签元素。
+          </div>
           <button
             type="button"
-            className="panel-card"
-            style={{ marginTop: 16, width: '100%' }}
+            className="datasource-action-btn datasource-action-btn-primary"
             onClick={() => onOpenDataImport?.()}
           >
-            <UploadOutlined className="panel-card-icon" />
+            <UploadOutlined />
             <span>上传数据文件</span>
           </button>
         </div>

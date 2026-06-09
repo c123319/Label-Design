@@ -8,6 +8,8 @@ function setImageFromDataURL(img: fabric.Image, dataURL: string): Promise<void> 
     fabric.Image.fromURL(dataURL, (newImg) => {
       img.setElement(newImg.getElement() as HTMLImageElement);
       img.set({ width: newImg.width, height: newImg.height });
+      // 同步 src，确保 toJSON / 导出时使用最新图片
+      (img as fabric.Image & { src?: string }).src = dataURL;
       resolve();
     });
   });

@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Modal, Upload, Table, Tag, Button, message, Alert } from 'antd';
+import { Modal, Upload, Table, Tag, Button, message, Alert, Tooltip } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
 import {
   buildFieldsFromColumns,
   validateUploadData,
   collectCanvasPlaceholders,
+  truncateText,
 } from '@/utils/renderTemplate';
 import type { IDataSource } from '@shared/types/datasource';
 import { dataSourceApi } from '@/services/api';
@@ -198,12 +199,24 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
         <div className="field-list-section">
           <h4>字段列表（{columns.length} 个）</h4>
           <div className="field-tags">
-            {fieldList.map((f) => (
-              <Tag key={f.fieldCode} title={f.sampleValue ? `示例: ${f.sampleValue}` : undefined}>
-                {f.fieldName}
-                {f.sampleValue && <span className="field-sample"> ({f.sampleValue})</span>}
-              </Tag>
-            ))}
+            {fieldList.map((f) => {
+              const sampleShort = f.sampleValue ? truncateText(String(f.sampleValue), 18) : '';
+              const tag = (
+                <Tag className="field-tag">
+                  <span className="field-tag-name">{f.fieldName}</span>
+                  {sampleShort && <span className="field-sample"> ({sampleShort})</span>}
+                </Tag>
+              );
+              return (
+                <span key={f.fieldCode} className="field-tag-wrap">
+                  {f.sampleValue && String(f.sampleValue).length > 18 ? (
+                    <Tooltip title={`示例: ${f.sampleValue}`}>{tag}</Tooltip>
+                  ) : (
+                    tag
+                  )}
+                </span>
+              );
+            })}
           </div>
         </div>
       )}

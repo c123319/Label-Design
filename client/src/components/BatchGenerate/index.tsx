@@ -3,7 +3,7 @@ import { Modal, Button, Progress, Alert, List, message } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
 import { validateBindings } from '@/utils/renderTemplate';
-import { batchExportPng } from '@/utils/batchExport';
+import { batchExportZip } from '@/utils/batchExport';
 import { renderJobApi } from '@/services/api';
 import './styles.css';
 
@@ -37,6 +37,20 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
     else if (result) message.error('校验未通过，请修正后重试');
   };
 
+  const syncCurrentPage = () => {
+    if (!canvas) return pages;
+    const json = canvas.toJSON();
+    const updated = [...pages];
+    updated[currentPageIndex] = {
+      width: templateSize.width,
+      height: templateSize.height,
+      background: pages[currentPageIndex]?.background || '#ffffff',
+      objects: (json.objects || []) as typeof updated[0]['objects'],
+    };
+    useEditorStore.setState({ pages: updated });
+    return updated;
+  };
+
   const handleGenerateLocal = async () => {
     const result = runValidation();
     if (!result?.valid || !canvas || !dataSource) return;
@@ -44,15 +58,17 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
     setGenerating(true);
     setProgress(0);
     try {
-      const background = pages[currentPageIndex]?.background || '#ffffff';
-      const { success, failed } = await batchExportPng(canvas, {
-        templateSize,
-        background,
+      const exportPages = syncCurrentPage();
+      const totalImages = dataSource.rows.length * exportPages.length;
+      const { success, failed } = await batchExportZip(canvas, {
+        pages: exportPages,
         rows: dataSource.rows,
         fileNamePrefix: templateName || 'label',
         onProgress: (cur, total) => setProgress(Math.round((cur / total) * 100)),
       });
-      message.success(`批量导出完成：成功 ${success} 张${failed > 0 ? `，失败 ${failed} 张` : ''}`);
+      message.success(
+        `ZIP 导出完成：成功 ${success} 张${failed > 0 ? `，失败 ${failed} 张` : ''}（共 ${totalImages} 张）`,
+      );
       onClose();
     } catch {
       message.error('批量生成失败');
@@ -127,7 +143,7 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
           disabled={!dataSource || generating}
           onClick={() => { setUseCloud(false); handleGenerateLocal(); }}
         >
-          本地下载 PNG
+          下载 ZIP
         </Button>,
         <Button
           key="cloud"
@@ -141,7 +157,7 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
     >
       <div className="batch-generate-body">
         <p className="batch-desc">
-          将按数据源每一行渲染一张标签。生成前会自动校验占位符与字段是否匹配。
+          将按数据源每一行渲染标签，多页模板会导出全部页面，打包为单个 ZIP 下载。生成前会自动校验占位符与字段是否匹配。
         </p>
 
         {dataSource ? (

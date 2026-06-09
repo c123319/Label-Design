@@ -11,7 +11,6 @@ import {
   EditOutlined,
   CheckCircleFilled,
   DownOutlined,
-  DatabaseOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
@@ -60,13 +59,8 @@ function App() {
     templateName, setTemplateName, setTemplateSize,
     canvas, exportAsJSON,
     currentTemplateId, setCurrentTemplateId,
-    setPropertyPanelTab, dataSource,
+    dataSource,
   } = useEditorStore();
-
-  const openDataBinding = useCallback(() => {
-    setPropertyPanelTab('databinding');
-    if (!dataSource) setDataImportOpen(true);
-  }, [setPropertyPanelTab, dataSource]);
 
   const { directoryName, isConnected } = useFilesystemStore();
 
@@ -291,9 +285,6 @@ function App() {
             </Button>
             <Button className="header-btn" icon={<FolderOpenOutlined />} onClick={() => setTemplateManagerOpen(true)}>
               模板管理
-            </Button>
-            <Button className="header-btn" icon={<DatabaseOutlined />} onClick={openDataBinding}>
-              数据绑定
             </Button>
             <Button
               className="header-btn"

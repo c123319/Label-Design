@@ -18,15 +18,36 @@ export type FabricCustomObject = fabric.Object & {
   binding?: import('@shared/types/datasource').IElementBinding;
 };
 
-const PLACEHOLDER_RE = /\{\{([\w.-]+)(?:\|([^}]*))?\}\}/g;
+/** 支持中文、英文等任意字段名（除 } 和 | 外） */
+const PLACEHOLDER_RE = /\{\{([^}|]+)(?:\|([^}]*))?\}\}/g;
+
+/** 从数据行中解析字段值，兼容首尾空格 */
+export function resolveRowValue(
+  rowData: Record<string, string | number | undefined | null>,
+  fieldCode: string,
+): string | number | undefined | null {
+  const trimmed = fieldCode.trim();
+  if (trimmed in rowData) return rowData[trimmed];
+  for (const [key, val] of Object.entries(rowData)) {
+    if (key.trim() === trimmed) return val;
+  }
+  return undefined;
+}
+
+/** 截断展示用文本，避免 UI 撑破布局 */
+export function truncateText(text: string, max = 24): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= max) return normalized;
+  return `${normalized.slice(0, max)}…`;
+}
 
 /** 渲染占位符文本，支持 {{field|默认值}} */
 export function renderText(
   template: string,
   rowData: Record<string, string | number | undefined | null>,
 ): string {
-  return template.replace(PLACEHOLDER_RE, (_, fieldCode: string, defaultValue?: string) => {
-    const value = rowData[fieldCode];
+  return template.replace(PLACEHOLDER_RE, (_, rawCode: string, defaultValue?: string) => {
+    const value = resolveRowValue(rowData, rawCode);
     if (value === undefined || value === null || value === '') {
       return defaultValue ?? '';
     }
@@ -40,7 +61,7 @@ export function extractPlaceholders(text: string): string[] {
   let match: RegExpExecArray | null;
   const re = new RegExp(PLACEHOLDER_RE.source, 'g');
   while ((match = re.exec(text)) !== null) {
-    fields.add(match[1]);
+    fields.add(match[1].trim());
   }
   return Array.from(fields);
 }
