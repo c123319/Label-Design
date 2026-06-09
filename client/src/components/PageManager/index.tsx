@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { Tooltip } from 'antd';
 import { PlusOutlined, CopyOutlined, CloseOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
+import { restoreTextObjectsEditability } from '@/utils/textEditing';
 import './styles.css';
 
 const PageManager: React.FC = () => {
@@ -37,6 +38,8 @@ const PageManager: React.FC = () => {
         if (targetPage.objects && targetPage.objects.length > 0) {
           canvas.loadFromJSON({ objects: targetPage.objects }, () => {
             canvas.setBackgroundColor('', () => {});
+            restoreTextObjectsEditability(canvas);
+            canvas.calcOffset();
             canvas.renderAll();
           });
         } else {

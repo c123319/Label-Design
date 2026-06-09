@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { ConfigProvider, Button, Tooltip, Modal, Input, Select, message, InputNumber, Dropdown } from 'antd';
+import { ConfigProvider, Button, Tooltip, Modal, Input, Select, message, InputNumber, Dropdown, Checkbox, Divider } from 'antd';
 import {
   SaveOutlined,
   DownloadOutlined,
@@ -10,6 +10,7 @@ import {
   PrinterOutlined,
   EditOutlined,
   CheckCircleFilled,
+  DownOutlined,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import CanvasEditor from '@/components/Canvas';
@@ -23,6 +24,9 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { useFilesystemStore } from '@/store/useFilesystemStore';
 import { templateApi } from '@/services/api';
 import { fileSystemStorage } from '@/services/fileSystemStorage';
+import { mmToPx, pxToMm } from '@/utils/canvasMetrics';
+import { exportTemplateToDataURL } from '@/utils/exportCanvas';
+import { fabric } from 'fabric';
 import './App.css';
 
 const SIZE_PRESETS = [
@@ -42,9 +46,10 @@ function App() {
   const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('未命名模板');
   const [selectedPreset, setSelectedPreset] = useState(0);
-  const [customWidth, setCustomWidth] = useState(800);
-  const [customHeight, setCustomHeight] = useState(600);
+  const [customWidthMm, setCustomWidthMm] = useState(100);
+  const [customHeightMm, setCustomHeightMm] = useState(70);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [exportTransparentBg, setExportTransparentBg] = useState(false);
 
   const {
     templateName, setTemplateName, setTemplateSize,
@@ -63,6 +68,8 @@ function App() {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       const store = useEditorStore.getState();
+      const editingText = store.canvas?.getActiveObject();
+      if (editingText && (editingText as fabric.IText).isEditing) return;
       if (e.key === 'Delete') { e.preventDefault(); store.deleteSelected(); }
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
       if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) { e.preventDefault(); store.redo(); }
@@ -83,11 +90,14 @@ function App() {
   const handleNewTemplate = useCallback(() => {
     const preset = SIZE_PRESETS[selectedPreset];
     setTemplateName(newTemplateName);
-    setTemplateSize({ width: preset.width || customWidth, height: preset.height || customHeight });
+    setTemplateSize({
+      width: preset.width || mmToPx(customWidthMm),
+      height: preset.height || mmToPx(customHeightMm),
+    });
     setNewTemplateOpen(false);
     setSaveStatus('idle');
     message.success(`已创建模板: ${newTemplateName}`);
-  }, [selectedPreset, customWidth, customHeight, newTemplateName, setTemplateName, setTemplateSize]);
+  }, [selectedPreset, customWidthMm, customHeightMm, newTemplateName, setTemplateName, setTemplateSize]);
 
   const handleDownload = useCallback(() => {
     const template = exportAsJSON();
@@ -147,30 +157,55 @@ function App() {
     }
   }, [exportAsJSON, currentTemplateId, setCurrentTemplateId]);
 
-  const handleExport = useCallback((format: 'png' | 'jpg', multiplier: number) => {
+  const handleExport = useCallback(async (format: 'png' | 'jpg', multiplier: number) => {
     if (!canvas) return;
+    const { templateSize, pages, currentPageIndex } = useEditorStore.getState();
+    const background = pages[currentPageIndex]?.background || '#ffffff';
     const activeObj = canvas.getActiveObject();
     canvas.discardActiveObject();
-    const dataURL = canvas.toDataURL({ format, quality: format === 'jpg' ? 0.92 : 1, multiplier });
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
-    const a = document.createElement('a');
-    a.href = dataURL;
-    a.download = `${templateName}.${format}`;
-    a.click();
-    message.success(`已导出 ${format.toUpperCase()} (${multiplier}x)`);
-  }, [canvas, templateName]);
 
-  const handlePrint = useCallback(() => {
+    try {
+      const dataURL = await exportTemplateToDataURL(canvas, templateSize, {
+        format: format === 'jpg' ? 'jpeg' : 'png',
+        multiplier,
+        transparentBackground: format === 'png' && exportTransparentBg,
+        background,
+      });
+      const a = document.createElement('a');
+      a.href = dataURL;
+      a.download = `${templateName}.${format}`;
+      a.click();
+      const bgHint = format === 'png' && exportTransparentBg ? '透明背景' : '含背景';
+      message.success(`已导出 ${format.toUpperCase()} (${multiplier}x，${bgHint})`);
+    } catch {
+      message.error('导出失败');
+    } finally {
+      if (activeObj) canvas.setActiveObject(activeObj);
+      canvas.renderAll();
+    }
+  }, [canvas, templateName, exportTransparentBg]);
+
+  const handlePrint = useCallback(async () => {
     if (!canvas) return;
+    const { templateSize, pages, currentPageIndex } = useEditorStore.getState();
+    const background = pages[currentPageIndex]?.background || '#ffffff';
     const activeObj = canvas.getActiveObject();
     canvas.discardActiveObject();
-    const dataURL = canvas.toDataURL({ format: 'png', quality: 1, multiplier: 2 });
-    if (activeObj) canvas.setActiveObject(activeObj);
-    canvas.renderAll();
-    const win = window.open('');
-    if (win) {
-      win.document.write(`<img src="${dataURL}" style="max-width:100%" onload="window.print();window.close()" />`);
+
+    try {
+      const dataURL = await exportTemplateToDataURL(canvas, templateSize, {
+        format: 'png',
+        multiplier: 2,
+        transparentBackground: false,
+        background,
+      });
+      const win = window.open('');
+      if (win) {
+        win.document.write(`<img src="${dataURL}" style="max-width:100%" onload="window.print();window.close()" />`);
+      }
+    } finally {
+      if (activeObj) canvas.setActiveObject(activeObj);
+      canvas.renderAll();
     }
   }, [canvas]);
 
@@ -240,18 +275,43 @@ function App() {
                 {saveStatusText}
               </span>
             )}
+            <Button className="header-btn" icon={<PlusOutlined />} onClick={() => setNewTemplateOpen(true)}>
+              新建模板
+            </Button>
+            <Button className="header-btn" icon={<FolderOpenOutlined />} onClick={() => setTemplateManagerOpen(true)}>
+              模板管理
+            </Button>
+            <Button className="header-btn" icon={<ImportOutlined />} onClick={() => setDataImportOpen(true)}>
+              数据导入
+            </Button>
             <Dropdown menu={{ items: [
-              { key: 'new', label: '新建模板', icon: <PlusOutlined />, onClick: () => setNewTemplateOpen(true) },
-              { key: 'templates', label: '模板管理', icon: <FolderOpenOutlined />, onClick: () => setTemplateManagerOpen(true) },
-              { key: 'data', label: '数据导入', icon: <ImportOutlined />, onClick: () => setDataImportOpen(true) },
-              { type: 'divider' as const },
               { key: 'folder', label: '保存到本地', icon: <FolderOpenOutlined />, onClick: handleSave },
               { key: 'cloud', label: '保存到云端', icon: <CloudUploadOutlined />, onClick: handleSaveToCloud },
               { key: 'download', label: '下载 JSON', icon: <DownloadOutlined />, onClick: handleDownload },
             ] }}>
-              <Button className="header-btn" icon={<SaveOutlined />}>保存</Button>
+              <Button className="header-btn header-btn-dropdown">
+                <SaveOutlined />
+                <span>保存</span>
+                <DownOutlined className="dropdown-caret" />
+              </Button>
             </Dropdown>
-            <Dropdown menu={{ items: exportMenuItems }}>
+            <Dropdown
+              menu={{ items: exportMenuItems }}
+              dropdownRender={(menu) => (
+                <div className="export-dropdown">
+                  {menu}
+                  <Divider style={{ margin: '4px 0' }} />
+                  <div style={{ padding: '4px 12px 8px' }}>
+                    <Checkbox
+                      checked={exportTransparentBg}
+                      onChange={(e) => setExportTransparentBg(e.target.checked)}
+                    >
+                      PNG 透明背景
+                    </Checkbox>
+                  </div>
+                </div>
+              )}
+            >
               <Button className="header-btn" icon={<DownloadOutlined />}>导出</Button>
             </Dropdown>
             <Button type="primary" className="header-btn header-btn-primary" icon={<PrinterOutlined />} onClick={handlePrint}>
@@ -287,16 +347,40 @@ function App() {
                 options={SIZE_PRESETS.map((p, i) => ({ value: i, label: p.label }))} />
             </div>
             {selectedPreset === SIZE_PRESETS.length - 1 && (
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>宽度 (px)</label>
-                  <InputNumber style={{ width: '100%' }} min={100} max={5000} value={customWidth} onChange={(v) => v && setCustomWidth(v)} />
+              <>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>宽度</label>
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      min={1}
+                      max={420}
+                      step={0.1}
+                      value={customWidthMm}
+                      onChange={(v) => v && setCustomWidthMm(v)}
+                      addonAfter="mm"
+                    />
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#6B7280' }}>
+                      {mmToPx(customWidthMm)} px
+                    </div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>高度</label>
+                    <InputNumber
+                      style={{ width: '100%' }}
+                      min={1}
+                      max={420}
+                      step={0.1}
+                      value={customHeightMm}
+                      onChange={(v) => v && setCustomHeightMm(v)}
+                      addonAfter="mm"
+                    />
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#6B7280' }}>
+                      {mmToPx(customHeightMm)} px
+                    </div>
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>高度 (px)</label>
-                  <InputNumber style={{ width: '100%' }} min={100} max={5000} value={customHeight} onChange={(v) => v && setCustomHeight(v)} />
-                </div>
-              </div>
+              </>
             )}
           </div>
         </Modal>

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Dropdown, MenuProps } from 'antd';
 import {
   CopyOutlined,
@@ -14,7 +14,6 @@ import {
 import { useEditorStore } from '@/store/useEditorStore';
 
 const ContextMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [locked, setLocked] = useState(false);
   const {
     canvas,
     activeObject,
@@ -25,12 +24,20 @@ const ContextMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ungroupSelected,
   } = useEditorStore();
 
+  const isLocked = !!(activeObject as fabric.Object & { lockMovementX?: boolean })?.lockMovementX;
+
   const handleLock = useCallback(() => {
     if (!canvas || !activeObject) return;
-    activeObject.set({ selectable: locked, evented: locked, lockMovementX: !locked, lockMovementY: !locked });
+    const locked = !isLocked;
+    activeObject.set({
+      lockMovementX: locked,
+      lockMovementY: locked,
+      lockScalingX: locked,
+      lockScalingY: locked,
+      lockRotation: locked,
+    });
     canvas.renderAll();
-    setLocked(!locked);
-  }, [canvas, activeObject, locked]);
+  }, [canvas, activeObject, isLocked]);
 
   const bringToFront = useCallback(() => {
     if (!canvas || !activeObject) return;
@@ -58,8 +65,8 @@ const ContextMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { type: 'divider' },
     {
       key: 'lock',
-      label: locked ? '解锁' : '锁定',
-      icon: locked ? <UnlockOutlined /> : <LockOutlined />,
+      label: isLocked ? '解锁' : '锁定',
+      icon: isLocked ? <UnlockOutlined /> : <LockOutlined />,
       onClick: handleLock,
     },
   ];

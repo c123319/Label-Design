@@ -133,6 +133,18 @@ html, body, #root {
   font-weight: 500;
 }
 
+.app-header .header-btn-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-header .header-btn-dropdown .dropdown-caret {
+  font-size: 10px;
+  margin-left: 2px;
+  color: var(--text-tertiary);
+}
+
 .app-header .header-btn-primary {
   background: var(--color-primary);
   border-color: var(--color-primary);

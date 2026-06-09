@@ -3,6 +3,9 @@ import type { fabric } from 'fabric';
 /** 300 DPI 下每毫米对应的画布像素 */
 export const PX_PER_MM = 300 / 25.4;
 
+export const pxToMm = (px: number) => Math.round((px / PX_PER_MM) * 10) / 10;
+export const mmToPx = (mm: number) => Math.round(mm * PX_PER_MM);
+
 /** 标尺宽度 (px) */
 export const RULER_SIZE = 28;
 

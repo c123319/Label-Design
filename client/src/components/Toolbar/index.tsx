@@ -159,7 +159,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
           <span className="panel-text-preview h1">H</span>
           <span>标题</span>
         </button>
-        <button type="button" className="panel-card" onClick={() => actions.addRect({ fill: 'transparent', stroke: '#DADDE3', rx: 4 })}>
+        <button type="button" className="panel-card" onClick={() => actions.addTextbox()}>
           <span className="panel-text-preview">□</span>
           <span>文本框</span>
         </button>

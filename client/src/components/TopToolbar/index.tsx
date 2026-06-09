@@ -64,7 +64,6 @@ const TopToolbar: React.FC = () => {
       lockScalingX: locked,
       lockScalingY: locked,
       lockRotation: locked,
-      selectable: !locked,
     });
     canvas.renderAll();
     saveHistory();

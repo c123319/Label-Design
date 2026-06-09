@@ -4,6 +4,7 @@ import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
 import { generateQRCodeDataURL } from '@/utils/qrcode';
 import { generateBarcodeDataURL, type BarcodeFormat } from '@/utils/barcode';
+import { focusTextForEdit } from '@/utils/textEditing';
 
 export function useCanvasActions() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -14,11 +15,12 @@ export function useCanvasActions() {
     top: templateSize.height / 2,
   }), [templateSize.width, templateSize.height]);
 
-  const addObj = useCallback((obj: fabric.Object) => {
+  const addObj = useCallback((obj: fabric.Object, autoEditText = false) => {
     if (!canvas) return;
     canvas.add(obj);
     canvas.setActiveObject(obj);
     canvas.renderAll();
+    if (autoEditText) focusTextForEdit(canvas, obj);
   }, [canvas]);
 
   const addText = useCallback((opts?: { text?: string; fontSize?: number; fontWeight?: string | number }) => {
@@ -32,7 +34,22 @@ export function useCanvasActions() {
       fontFamily: 'SimSun, serif',
       fill: '#333333',
       editable: true,
-    }));
+    }), true);
+  }, [canvas, getCenter, addObj]);
+
+  const addTextbox = useCallback(() => {
+    if (!canvas) return;
+    const { left, top } = getCenter();
+    addObj(new fabric.Textbox('双击编辑', {
+      left: left - 100,
+      top: top - 40,
+      width: 200,
+      fontSize: 14,
+      fontFamily: 'SimSun, serif',
+      fill: '#333333',
+      editable: true,
+      splitByGrapheme: true,
+    }), true);
   }, [canvas, getCenter, addObj]);
 
   const addHeading = useCallback((level: 1 | 2) => {
@@ -288,6 +305,7 @@ export function useCanvasActions() {
     triggerImageUpload,
     handleImageUpload,
     addText,
+    addTextbox,
     addHeading,
     addPlaceholder,
     addPresetText,

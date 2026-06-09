@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { fabric } from 'fabric';
 import type { ITemplate, ITemplatePage } from '@shared/types/template';
+import { restoreTextObjectsEditability } from '@/utils/textEditing';
 
 /** 默认模板尺寸 (100x70mm 标签，300dpi → 1181x827px) */
 const DEFAULT_SIZE = { width: 1181, height: 827 };
@@ -296,6 +297,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const prev = historyStack[historyIndex - 1];
     canvas.loadFromJSON(JSON.parse(prev), () => {
       canvas.setBackgroundColor('', () => {});
+      restoreTextObjectsEditability(canvas);
+      canvas.calcOffset();
       canvas.renderAll();
       set({ historyIndex: historyIndex - 1 });
     });
@@ -307,6 +310,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const next = historyStack[historyIndex + 1];
     canvas.loadFromJSON(JSON.parse(next), () => {
       canvas.setBackgroundColor('', () => {});
+      restoreTextObjectsEditability(canvas);
+      canvas.calcOffset();
       canvas.renderAll();
       set({ historyIndex: historyIndex + 1 });
     });
@@ -350,6 +355,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const page = template.pages[0];
       canvas.loadFromJSON({ objects: page.objects }, () => {
         canvas.setBackgroundColor('', () => {});
+        restoreTextObjectsEditability(canvas);
+        canvas.calcOffset();
         canvas.renderAll();
       });
     }

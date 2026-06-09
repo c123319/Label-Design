@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { InputNumber, Slider, Select, Button, Tooltip, Segmented, ColorPicker, Input, Switch } from 'antd';
-import { PX_PER_MM } from '@/utils/canvasMetrics';
+import { pxToMm, mmToPx } from '@/utils/canvasMetrics';
 import {
   BoldOutlined,
   ItalicOutlined,
@@ -36,9 +36,6 @@ const FONT_FAMILIES = [
   { value: 'Times New Roman, serif', label: 'Times New Roman' },
   { value: 'Courier New, monospace', label: 'Courier New' },
 ];
-
-const pxToMm = (px: number) => Math.round((px / PX_PER_MM) * 10) / 10;
-const mmToPx = (mm: number) => Math.round(mm * PX_PER_MM);
 
 const PropertyPanel: React.FC = () => {
   const {
@@ -152,8 +149,9 @@ const PropertyPanel: React.FC = () => {
   const updateProp = useCallback(
     (key: string, value: unknown) => {
       if (!activeObject || !canvas) return;
-      (activeObject as any)[key] = value;
-      canvas.renderAll();
+      activeObject.set(key as keyof fabric.Object, value as never);
+      activeObject.setCoords();
+      canvas.requestRenderAll();
       refreshProps();
     },
     [activeObject, canvas, refreshProps],
@@ -286,7 +284,7 @@ const PropertyPanel: React.FC = () => {
       {/* ── 基础属性 ── */}
       <div className="panel-section">
         <div className="section-title">基础</div>
-        <div className="prop-row">
+        <div className="prop-row prop-row-dual-unit">
           <span className="prop-label">X</span>
           <div className="prop-field">
             <InputNumber
@@ -294,7 +292,9 @@ const PropertyPanel: React.FC = () => {
               value={objProps.left as number}
               onChange={(v) => v !== null && updateProp('left', v)}
               style={{ width: '100%' }}
+              addonAfter="px"
             />
+            <div className="prop-dual-unit-secondary">{pxToMm(objProps.left as number)} mm</div>
           </div>
           <span className="prop-label">Y</span>
           <div className="prop-field">
@@ -303,10 +303,12 @@ const PropertyPanel: React.FC = () => {
               value={objProps.top as number}
               onChange={(v) => v !== null && updateProp('top', v)}
               style={{ width: '100%' }}
+              addonAfter="px"
             />
+            <div className="prop-dual-unit-secondary">{pxToMm(objProps.top as number)} mm</div>
           </div>
         </div>
-        <div className="prop-row">
+        <div className="prop-row prop-row-dual-unit">
           <span className="prop-label">宽</span>
           <div className="prop-field">
             <InputNumber
@@ -314,7 +316,9 @@ const PropertyPanel: React.FC = () => {
               value={objProps.width as number}
               onChange={(v) => v !== null && updateSize('width', v)}
               style={{ width: '100%' }}
+              addonAfter="px"
             />
+            <div className="prop-dual-unit-secondary">{pxToMm(objProps.width as number)} mm</div>
           </div>
           <span className="prop-label">高</span>
           <div className="prop-field">
@@ -323,7 +327,9 @@ const PropertyPanel: React.FC = () => {
               value={objProps.height as number}
               onChange={(v) => v !== null && updateSize('height', v)}
               style={{ width: '100%' }}
+              addonAfter="px"
             />
+            <div className="prop-dual-unit-secondary">{pxToMm(objProps.height as number)} mm</div>
           </div>
         </div>
         <div className="prop-row">

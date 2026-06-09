@@ -15,6 +15,7 @@ import {
   fitCanvasToContainer,
   resizeCanvasToViewport,
 } from '@/utils/canvasViewport';
+import { enterTextEditing, isEditableText, restoreTextObjectsEditability } from '@/utils/textEditing';
 import './styles.css';
 
 const CanvasEditor: React.FC = () => {
@@ -107,6 +108,14 @@ const CanvasEditor: React.FC = () => {
       setActiveObjects([]);
     });
 
+    canvas.on('mouse:dblclick', (opt) => {
+      const target = opt.target;
+      if (!isEditableText(target)) return;
+      enterTextEditing(target, opt.e);
+    });
+
+    canvas.on('text:editing:exited', () => saveHistory());
+
     // 对象修改后保存历史
     canvas.on('object:modified', () => saveHistory());
     canvas.on('object:added', () => saveHistory());
@@ -186,18 +195,24 @@ const CanvasEditor: React.FC = () => {
     setCanvas(canvas);
 
     resizeCanvasToViewport(canvas);
+    canvas.calcOffset();
+
+    const afterLoad = () => {
+      restoreTextObjectsEditability(canvas);
+      canvas.calcOffset();
+      fitCanvasToContainer(canvas, templateSize);
+      useEditorStore.setState({ zoom: canvas.getZoom() });
+    };
 
     // 加载当前页数据，加载完成后 fit to container
     const page = pages[currentPageIndex];
     if (page && page.objects && page.objects.length > 0) {
       canvas.loadFromJSON({ objects: page.objects }, () => {
         canvas.setBackgroundColor('', () => {});
-        fitCanvasToContainer(canvas, templateSize);
-        useEditorStore.setState({ zoom: canvas.getZoom() });
+        afterLoad();
       });
     } else {
-      fitCanvasToContainer(canvas, templateSize);
-      useEditorStore.setState({ zoom: canvas.getZoom() });
+      afterLoad();
     }
 
     return canvas;
@@ -223,6 +238,7 @@ const CanvasEditor: React.FC = () => {
     const onResize = () => {
       if (!canvasRef.current) return;
       if (resizeCanvasToViewport(canvasRef.current)) {
+        canvasRef.current.calcOffset();
         fitCanvasToContainer(canvasRef.current, useEditorStore.getState().templateSize);
         useEditorStore.setState({ zoom: canvasRef.current.getZoom() });
         canvasRef.current.requestRenderAll();
