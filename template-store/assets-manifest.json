@@ -1,0 +1,51 @@
+{
+  "version": "2026-06-09.001",
+  "categories": [
+    { "code": "icons", "name": "法案标", "sort": 100 },
+    { "code": "regulatory", "name": "合规标识", "sort": 90 },
+    { "code": "warning", "name": "跨境警示语", "sort": 80 },
+    { "code": "logos", "name": "Logo", "sort": 70 },
+    { "code": "backgrounds", "name": "背景", "sort": 60 }
+  ],
+  "assets": [
+    { "id": "icon_lightning", "name": "闪电", "category": "icons", "type": "label", "content": "⚡", "sort": 100 },
+    { "id": "icon_recycle", "name": "回收", "category": "icons", "type": "label", "content": "♻", "sort": 90 },
+    { "id": "icon_warning", "name": "警告", "category": "icons", "type": "label", "content": "⚠", "sort": 80 },
+    { "id": "icon_forbidden", "name": "禁止", "category": "icons", "type": "label", "content": "🚫", "sort": 70 },
+    { "id": "icon_package", "name": "包装", "category": "icons", "type": "label", "content": "📦", "sort": 60 },
+    { "id": "icon_tag", "name": "标签", "category": "icons", "type": "label", "content": "🏷", "sort": 50 },
+
+    { "id": "reg_ce", "name": "CE", "category": "regulatory", "type": "label", "content": "CE", "tags": ["欧盟"], "sort": 100 },
+    { "id": "reg_ukca", "name": "UKCA", "category": "regulatory", "type": "label", "content": "UKCA", "tags": ["英国"], "sort": 99 },
+    { "id": "reg_kc", "name": "KC", "category": "regulatory", "type": "label", "content": "KC", "tags": ["韩国"], "sort": 98 },
+    { "id": "reg_erep", "name": "E-REP", "category": "regulatory", "type": "label", "content": "E-REP", "sort": 97 },
+    { "id": "reg_ukrep", "name": "UK-REP", "category": "regulatory", "type": "label", "content": "UK-REP", "sort": 96 },
+    { "id": "reg_ecrep", "name": "EC REP", "category": "regulatory", "type": "label", "content": "EC REP", "sort": 95 },
+    { "id": "reg_usrep", "name": "US REP", "category": "regulatory", "type": "label", "content": "US REP", "sort": 94 },
+    { "id": "reg_cpc", "name": "CPC", "category": "regulatory", "type": "label", "content": "CPC", "sort": 93 },
+    { "id": "reg_fda", "name": "FDA", "category": "regulatory", "type": "label", "content": "FDA", "sort": 92 },
+    { "id": "reg_etl", "name": "ETL", "category": "regulatory", "type": "label", "content": "ETL", "sort": 91 },
+    { "id": "reg_ul", "name": "UL", "category": "regulatory", "type": "label", "content": "UL", "sort": 90 },
+    { "id": "reg_rohs", "name": "RoHS", "category": "regulatory", "type": "label", "content": "RoHS", "sort": 89 },
+    { "id": "reg_weee", "name": "WEEE", "category": "regulatory", "type": "label", "content": "WEEE", "sort": 88 },
+    { "id": "reg_triman", "name": "Triman", "category": "regulatory", "type": "label", "content": "Triman", "sort": 87 },
+    { "id": "reg_fsc", "name": "FSC", "category": "regulatory", "type": "label", "content": "FSC", "sort": 86 },
+    { "id": "reg_tuv", "name": "TUV", "category": "regulatory", "type": "label", "content": "TUV", "sort": 85 },
+    { "id": "reg_gs", "name": "GS", "category": "regulatory", "type": "label", "content": "GS", "sort": 84 },
+    { "id": "reg_ccc", "name": "CCC", "category": "regulatory", "type": "label", "content": "CCC", "sort": 83 },
+    { "id": "reg_ce_svg", "name": "CE 标识", "category": "regulatory", "type": "image", "url": "assets/icons/ce.svg", "thumbnail": "assets/icons/ce.svg", "tags": ["CE", "欧盟"], "sort": 50 },
+    { "id": "reg_rohs_svg", "name": "RoHS 标识", "category": "regulatory", "type": "image", "url": "assets/icons/rohs.svg", "thumbnail": "assets/icons/rohs.svg", "tags": ["RoHS"], "sort": 49 },
+
+    { "id": "warn_suffocation_1", "name": "跨境警示语 1", "category": "warning", "type": "text", "content": "WARNING: TO AVOID DANGER OF SUFFOCATION, KEEP THIS PLASTIC BAG AWAY FROM BABIES AND CHILDREN.\n警告：为了避免窒息的危险，请将此塑料袋远离婴儿和儿童。", "sort": 100 },
+    { "id": "warn_suffocation_2", "name": "跨境警示语 2", "category": "warning", "type": "text", "content": "Warning: To avoid danger of suffocation, keep this bag away from babies and children.\n警告：为了避免窒息的危险，请将此塑料袋远离婴儿和儿童。", "sort": 99 },
+    { "id": "warn_fcc", "name": "FCC 警示语", "category": "warning", "type": "text", "content": "WARNING: This device complies with part 15 of the FCC Rules.\n警告：本设备符合 FCC 规则第 15 部分。", "sort": 98 },
+    { "id": "warn_sharp_edges", "name": "美国含锐利边缘玩具", "category": "warning", "type": "text", "content": "CAUTION: Assembly kit contains parts with sharp edges.\n注意：组装套件中包含具有锋利边缘的零件。", "sort": 97 },
+    { "id": "warn_canada_suffocation", "name": "加拿大玩具防窒息", "category": "warning", "type": "text", "content": "PLASTIC BAGS CAN BE DANGEROUS. TO AVOID DANGER OF SUFFOCATION, KEEP THIS BAG AWAY FROM BABIES AND CHILDREN.\n塑料袋是危险的。为避免窒息的危险，请将其放在远离婴儿和儿童。", "sort": 96 },
+
+    { "id": "logo_company", "name": "公司 Logo", "category": "logos", "type": "image", "url": "assets/logos/company_logo.svg", "thumbnail": "assets/logos/company_logo.svg", "sort": 100 },
+    { "id": "logo_certified", "name": "认证 Logo", "category": "logos", "type": "image", "url": "assets/logos/certified.svg", "thumbnail": "assets/logos/certified.svg", "sort": 90 },
+
+    { "id": "bg_white", "name": "白色背景", "category": "backgrounds", "type": "image", "url": "assets/backgrounds/white.svg", "thumbnail": "assets/backgrounds/white.svg", "sort": 100 },
+    { "id": "bg_warning_yellow", "name": "警示黄底", "category": "backgrounds", "type": "image", "url": "assets/backgrounds/warning_yellow.svg", "thumbnail": "assets/backgrounds/warning_yellow.svg", "sort": 90 }
+  ]
+}

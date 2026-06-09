@@ -89,6 +89,25 @@ export function useCanvasActions() {
 
   const triggerImageUpload = useCallback(() => fileInputRef.current?.click(), []);
 
+  const addImageFromUrl = useCallback((url: string, maxSize = 200) => {
+    if (!canvas) return;
+    const { left, top } = getCenter();
+    fabric.Image.fromURL(
+      url,
+      (img) => {
+        const scale = Math.min(maxSize / (img.width || 1), maxSize / (img.height || 1), 1);
+        img.set({
+          left: left - (img.width! * scale) / 2,
+          top: top - (img.height! * scale) / 2,
+          scaleX: scale,
+          scaleY: scale,
+        });
+        addObj(img);
+      },
+      { crossOrigin: 'anonymous' },
+    );
+  }, [canvas, getCenter, addObj]);
+
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (!canvas || !e.target.files?.length) return;
     const file = e.target.files[0];
@@ -304,6 +323,7 @@ export function useCanvasActions() {
   return {
     fileInputRef,
     triggerImageUpload,
+    addImageFromUrl,
     handleImageUpload,
     addText,
     addTextbox,

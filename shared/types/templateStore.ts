@@ -90,3 +90,37 @@ export interface IStoreTemplateFile {
   canvas: IStoreCanvas;
   objects: IStoreTemplateObject[];
 }
+
+/** 素材类型 */
+export type AssetType = 'image' | 'text' | 'label';
+
+/** 素材分类 */
+export interface IAssetCategory {
+  code: string;
+  name: string;
+  sort?: number;
+  collapsible?: boolean;
+}
+
+/** 素材条目 */
+export interface IAssetEntry {
+  id: string;
+  name: string;
+  category: string;
+  type: AssetType;
+  /** 图片素材 URL（相对路径） */
+  url?: string;
+  /** 缩略图 URL，默认同 url */
+  thumbnail?: string;
+  /** 文本/标签内容 */
+  content?: string;
+  tags?: string[];
+  sort?: number;
+}
+
+/** 素材库清单 */
+export interface IAssetsManifest {
+  version: string;
+  categories: IAssetCategory[];
+  assets: IAssetEntry[];
+}

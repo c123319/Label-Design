@@ -1,5 +1,8 @@
 import { TEMPLATE_STORE_ALLOWED_HOSTS, TEMPLATE_STORE_BASE_URL } from '@/config/templateStore';
 import type {
+  IAssetCategory,
+  IAssetEntry,
+  IAssetsManifest,
   ITemplateCategory,
   ITemplateStoreEntry,
   ITemplateStoreManifest,
@@ -10,10 +13,18 @@ import { convertStoreTemplateToITemplate } from '@/utils/convertStoreTemplate';
 
 const MANIFEST_CACHE_KEY = 'template-store-manifest';
 const MANIFEST_VERSION_KEY = 'template-store-version';
+const ASSETS_CACHE_KEY = 'template-store-assets';
 
 interface CachedManifest {
   version: string;
   templates: ITemplateStoreEntry[];
+  fetchedAt: number;
+}
+
+interface CachedAssets {
+  version: string;
+  categories: IAssetCategory[];
+  assets: IAssetEntry[];
   fetchedAt: number;
 }
 
@@ -59,6 +70,27 @@ function readManifestCache(): CachedManifest | null {
   } catch {
     return null;
   }
+}
+
+function readAssetsCache(): CachedAssets | null {
+  try {
+    const raw = sessionStorage.getItem(ASSETS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as CachedAssets) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeAssetsCache(manifest: IAssetsManifest): void {
+  sessionStorage.setItem(
+    ASSETS_CACHE_KEY,
+    JSON.stringify({
+      version: manifest.version,
+      categories: manifest.categories,
+      assets: manifest.assets,
+      fetchedAt: Date.now(),
+    }),
+  );
 }
 
 function writeManifestCache(manifest: ITemplateStoreManifest): void {
@@ -166,6 +198,68 @@ export const templateStoreService = {
         t.name.toLowerCase().includes(kw) ||
         t.categoryName.toLowerCase().includes(kw) ||
         t.tags?.some((tag) => tag.toLowerCase().includes(kw)),
+    );
+  },
+
+  /** 加载 assets-manifest.json */
+  async fetchAssetsManifest(force = false): Promise<IAssetsManifest> {
+    const url = resolveStoreUrl('assets-manifest.json');
+    if (!force) {
+      const cached = readAssetsCache();
+      if (cached) {
+        try {
+          const remote = await fetchJson<IAssetsManifest>(url);
+          if (remote.version === cached.version) {
+            return {
+              version: cached.version,
+              categories: cached.categories,
+              assets: cached.assets,
+            };
+          }
+          writeAssetsCache(remote);
+          return remote;
+        } catch {
+          return {
+            version: cached.version,
+            categories: cached.categories,
+            assets: cached.assets,
+          };
+        }
+      }
+    }
+    const manifest = await fetchJson<IAssetsManifest>(url);
+    writeAssetsCache(manifest);
+    return manifest;
+  },
+
+  /** 获取素材资源 URL */
+  getAssetUrl(entry: IAssetEntry): string {
+    const path = entry.url || entry.thumbnail || '';
+    return resolveStoreUrl(path);
+  },
+
+  /** 获取素材缩略图 URL */
+  getAssetThumbnailUrl(entry: IAssetEntry): string | null {
+    const path = entry.thumbnail || entry.url;
+    return path ? resolveStoreUrl(path) : null;
+  },
+
+  /** 按分类筛选素材 */
+  filterAssetsByCategory(assets: IAssetEntry[], category: string): IAssetEntry[] {
+    return assets
+      .filter((a) => a.category === category)
+      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+  },
+
+  /** 搜索素材 */
+  searchAssets(assets: IAssetEntry[], keyword: string): IAssetEntry[] {
+    const kw = keyword.trim().toLowerCase();
+    if (!kw) return assets;
+    return assets.filter(
+      (a) =>
+        a.name.toLowerCase().includes(kw) ||
+        a.content?.toLowerCase().includes(kw) ||
+        a.tags?.some((tag) => tag.toLowerCase().includes(kw)),
     );
   },
 };

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Input, Select, Modal, message, Spin, Empty } from 'antd';
 import {
   AppstoreOutlined,
@@ -15,15 +15,11 @@ import {
 import { useEditorStore } from '@/store/useEditorStore';
 import { truncateText } from '@/utils/renderTemplate';
 import { useTemplateStore } from '@/hooks/useTemplateStore';
+import { useAssetStore } from '@/hooks/useAssetStore';
 import { templateStoreService } from '@/services/templateStore';
+import type { IAssetCategory, IAssetEntry } from '@shared/types/templateStore';
 import { useCanvasActions } from './useCanvasActions';
-import {
-  NAV_ITEMS,
-  WARNING_PRESETS,
-  MATERIAL_CATEGORIES,
-  REGULATORY_ICONS,
-  type SidebarTab,
-} from './constants';
+import { NAV_ITEMS, type SidebarTab } from './constants';
 import './styles.css';
 
 const NAV_ICONS: Record<SidebarTab, React.ReactNode> = {
@@ -88,7 +84,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [templateFilter, setTemplateFilter] = useState('featured');
   const [loadingTemplateId, setLoadingTemplateId] = useState<string | null>(null);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('法案标');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [qrValue, setQrValue] = useState('{{qr_data}}');
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
@@ -98,6 +94,24 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   const { sidebarCollapsed, toggleSidebar, loadFromJSON, setCurrentTemplateId, dataSource } = useEditorStore();
   const actions = useCanvasActions();
   const templateStore = useTemplateStore(activeTab === 'template');
+  const assetStore = useAssetStore(activeTab === 'material');
+
+  useEffect(() => {
+    if (activeTab !== 'material' || assetStore.categories.length === 0) return;
+    setExpandedCategories((prev) => {
+      if (prev.size > 0) return prev;
+      return new Set(assetStore.categories.map((c) => c.code));
+    });
+  }, [activeTab, assetStore.categories]);
+
+  const toggleMaterialCategory = useCallback((code: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }, []);
 
   const filteredEntries = useMemo(() => {
     const byCategory = templateStore.filterByCategory(templateFilter);
@@ -259,69 +273,144 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
     </div>
   );
 
-  const renderMaterialPanel = () => (
-    <div className="panel-scroll">
-      <Input
-        prefix={<SearchOutlined />}
-        placeholder="输入关键词搜索"
-        value={searchKeyword}
-        onChange={(e) => setSearchKeyword(e.target.value)}
-        className="panel-search"
-        allowClear
-      />
+  const handleAssetClick = useCallback((asset: IAssetEntry) => {
+    if (asset.type === 'image' && asset.url) {
+      actions.addImageFromUrl(assetStore.getAssetUrl(asset));
+    } else if (asset.type === 'text' && asset.content) {
+      actions.addPresetText(asset.content);
+    } else if (asset.content) {
+      actions.addIconText(asset.content);
+    }
+  }, [actions, assetStore]);
+
+  const renderAssetGridItem = (asset: IAssetEntry) => {
+    const thumbUrl = assetStore.getThumbnailUrl(asset);
+    if (asset.type === 'image' && thumbUrl) {
+      return (
+        <button
+          key={asset.id}
+          type="button"
+          className="asset-cell asset-cell--image"
+          title={asset.name}
+          onClick={() => handleAssetClick(asset)}
+        >
+          <img className="asset-cell__img" src={thumbUrl} alt={asset.name} loading="lazy" />
+          <span className="asset-cell__name">{asset.name}</span>
+        </button>
+      );
+    }
+    const isEmoji = asset.type === 'label' && (asset.content?.length ?? 0) <= 2;
+    return (
       <button
+        key={asset.id}
         type="button"
-        className="category-header"
-        onClick={() => setExpandedCategory(expandedCategory === '法案标' ? null : '法案标')}
+        className={`asset-cell asset-cell--label${isEmoji ? ' asset-cell--emoji' : ''}`}
+        title={asset.name}
+        onClick={() => handleAssetClick(asset)}
       >
-        <span>法案标</span>
-        <RightOutlined className={expandedCategory === '法案标' ? 'expanded' : ''} />
+        <span className="asset-cell__label">{asset.content || asset.name}</span>
       </button>
-      {expandedCategory === '法案标' && (
-        <div className="panel-grid panel-grid-3 material-icons">
-          {['⚡', '♻', '⚠', '🚫', '📦', '🏷'].map((icon) => (
-            <button key={icon} type="button" className="panel-shape-btn" onClick={() => actions.addIconText(icon)}>
-              <span style={{ fontSize: 22 }}>{icon}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {renderSectionHeader('合规标识')}
-      <div className="panel-grid panel-grid-4 icon-grid">
-        {REGULATORY_ICONS
-          .filter((icon) => !searchKeyword || icon.toLowerCase().includes(searchKeyword.toLowerCase()))
-          .map((icon) => (
-            <button key={icon} type="button" className="icon-item" onClick={() => actions.addIconText(icon)}>
-              {icon}
-            </button>
-          ))}
-      </div>
+    );
+  };
 
-      {renderSectionHeader('跨境警示语')}
-      <div className="warning-list">
-        {WARNING_PRESETS.map((item) => (
-          <button
-            key={item.title}
-            type="button"
-            className="warning-item"
-            onClick={() => actions.addPresetText(item.text)}
-          >
-            <div className="warning-title">⚠ {item.title}</div>
-            <div className="warning-text">{item.text}</div>
-          </button>
-        ))}
-      </div>
-
-      <div className="category-list">
-        {MATERIAL_CATEGORIES.filter((c) => !searchKeyword || c.includes(searchKeyword)).map((cat) => (
-          <button key={cat} type="button" className="category-item">
-            <span>{cat}</span>
-            <RightOutlined />
-          </button>
-        ))}
-      </div>
-    </div>
+  const renderAssetTextItem = (asset: IAssetEntry) => (
+    <button key={asset.id} type="button" className="warning-item" onClick={() => handleAssetClick(asset)}>
+      <div className="warning-title">⚠ {asset.name}</div>
+      <div className="warning-text">{asset.content}</div>
+    </button>
   );
+
+  const renderCategoryContent = (cat: IAssetCategory, items: IAssetEntry[]) => {
+    if (cat.code === 'warning') {
+      return <div className="warning-list">{items.map(renderAssetTextItem)}</div>;
+    }
+    if (cat.code === 'regulatory') {
+      const imageItems = items.filter((a) => a.type === 'image');
+      const labelItems = items.filter((a) => a.type !== 'image');
+      return (
+        <>
+          {imageItems.length > 0 && (
+            <div className="asset-grid asset-grid--2">
+              {imageItems.map(renderAssetGridItem)}
+            </div>
+          )}
+          {labelItems.length > 0 && (
+            <div className={`asset-grid asset-grid--4${imageItems.length > 0 ? ' asset-grid--spaced' : ''}`}>
+              {labelItems.map(renderAssetGridItem)}
+            </div>
+          )}
+        </>
+      );
+    }
+    const gridCols = cat.code === 'icons' ? 3
+      : cat.code === 'logos' || cat.code === 'backgrounds' ? 2
+        : 4;
+    return (
+      <div className={`asset-grid asset-grid--${gridCols}`}>
+        {items.map(renderAssetGridItem)}
+      </div>
+    );
+  };
+
+  const renderMaterialPanel = () => {
+    if (assetStore.loading) {
+      return (
+        <div className="panel-scroll">
+          <div className="template-store-loading"><Spin tip="加载素材库..." /></div>
+        </div>
+      );
+    }
+
+    if (assetStore.error || assetStore.assets.length === 0) {
+      return (
+        <div className="panel-scroll">
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={assetStore.error || '素材库暂无内容'}
+          >
+            <button type="button" className="panel-more" onClick={() => assetStore.reload()}>
+              重新加载
+            </button>
+          </Empty>
+        </div>
+      );
+    }
+
+    const filteredAssets = templateStoreService.searchAssets(assetStore.assets, searchKeyword);
+
+    return (
+      <div className="panel-scroll">
+        <Input
+          prefix={<SearchOutlined />}
+          placeholder="输入关键词搜索"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          className="panel-search"
+          allowClear
+        />
+        {assetStore.categories.map((cat) => {
+          const items = templateStoreService
+            .filterAssetsByCategory(filteredAssets, cat.code);
+          if (items.length === 0) return null;
+          const isExpanded = expandedCategories.has(cat.code);
+
+          return (
+            <section key={cat.code} className="material-section">
+              <button
+                type="button"
+                className="category-header"
+                onClick={() => toggleMaterialCategory(cat.code)}
+              >
+                <span>{cat.name}</span>
+                <RightOutlined className={isExpanded ? 'expanded' : ''} />
+              </button>
+              {isExpanded && renderCategoryContent(cat, items)}
+            </section>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderDatasourcePanel = () => (
     <div className="panel-scroll datasource-panel">

@@ -90,8 +90,10 @@
 
 .panel-scroll {
   flex: 1;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 16px;
+  min-width: 0;
 }
 
 .panel-section-header {
@@ -426,34 +428,123 @@
   color: var(--text-placeholder);
 }
 
-.material-icons {
-  margin: 8px 0;
+/* ── 素材库分区 ── */
+.material-section {
+  margin-bottom: 20px;
 }
 
-/* ── 图标库 ── */
-.icon-grid {
+.material-section:last-child {
+  margin-bottom: 8px;
+}
+
+.material-section .category-header {
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.material-section:first-of-type .category-header {
+  margin-top: 0;
+}
+
+/* ── 素材统一网格 ── */
+.asset-grid {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.asset-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.asset-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.asset-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.asset-grid--spaced {
   margin-top: 8px;
 }
 
-.icon-item {
+.asset-cell {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 4px;
   background: var(--bg-panel);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-primary);
   cursor: pointer;
-  padding: 4px;
-  transition: all 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.icon-item:hover {
+.asset-cell:hover {
   border-color: var(--color-primary);
+  background: #f8fbff;
+}
+
+.asset-cell--label {
+  min-height: 44px;
+}
+
+.asset-cell--emoji {
+  min-height: 52px;
+}
+
+.asset-cell--emoji .asset-cell__label {
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.asset-cell--image {
+  min-height: 72px;
+  padding: 8px 6px 6px;
+}
+
+.asset-cell__label {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--text-primary);
+  word-break: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  max-width: 100%;
+}
+
+.asset-cell:hover .asset-cell__label {
   color: var(--color-primary);
+}
+
+.asset-cell__img {
+  width: 100%;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.asset-cell__name {
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--text-secondary);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
 }
 
 /* ── 占位面板 ── */
