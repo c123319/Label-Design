@@ -194,3 +194,32 @@ export function getPreviewValue(
   const rendered = renderText(template, rowData);
   return rendered || defaultValue || '';
 }
+
+/** 清洗导出文件名，去除非法字符 */
+export function sanitizeExportFileName(name: string): string {
+  let safe = name.replace(/[\\/:*?"<>|]/g, '_');
+  safe = safe.replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^\.+|\.+$/g, '').trim();
+  if (!safe) return 'label';
+  if (safe.length > 120) safe = safe.slice(0, 120);
+  return safe;
+}
+
+/** 构建批量导出 PNG 文件名 */
+export function buildExportFileName(
+  rowIndex: number,
+  pageIndex: number,
+  pageCount: number,
+  prefix: string,
+  rowData: Record<string, string | number>,
+  fileNameTemplate?: string,
+): string {
+  const padRow = (n: number) => String(n).padStart(3, '0');
+
+  if (fileNameTemplate?.trim()) {
+    const rendered = sanitizeExportFileName(renderText(fileNameTemplate.trim(), rowData));
+    if (pageCount === 1) return `${rendered}.png`;
+    return `${rendered}_${pageIndex + 1}.png`;
+  }
+  if (pageCount === 1) return `${prefix}_${padRow(rowIndex + 1)}.png`;
+  return `${padRow(rowIndex + 1)}_${pageIndex + 1}.png`;
+}

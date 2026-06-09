@@ -5,28 +5,22 @@ import { exportTemplateToDataURL } from '@/utils/exportCanvas';
 import { applyPreviewToCanvas, clearPreviewCache } from '@/utils/previewRender';
 import { restoreTextObjectsEditability } from '@/utils/textEditing';
 import { canvasToJSON } from '@/utils/fabricCustomProps';
+import { buildExportFileName } from '@/utils/renderTemplate';
 
 export interface BatchExportOptions {
   pages: ITemplatePage[];
   rows: Record<string, string | number>[];
   fileNamePrefix?: string;
+  /** 支持 {{字段名}} 占位符，如 {{productName}}_标签 */
+  fileNameTemplate?: string;
   onProgress?: (current: number, total: number) => void;
+  signal?: AbortSignal;
 }
 
-function padRow(n: number): string {
-  return String(n).padStart(3, '0');
-}
-
-function buildFileName(
-  rowIndex: number,
-  pageIndex: number,
-  pageCount: number,
-  prefix: string,
-): string {
-  if (pageCount === 1) {
-    return `${prefix}_${padRow(rowIndex + 1)}.png`;
-  }
-  return `${padRow(rowIndex + 1)}_${pageIndex + 1}.png`;
+export interface BatchExportResult {
+  success: number;
+  failed: number;
+  cancelled: boolean;
 }
 
 function dataURLToUint8Array(dataURL: string): Uint8Array {
@@ -37,6 +31,14 @@ function dataURLToUint8Array(dataURL: string): Uint8Array {
     bytes[i] = binary.charCodeAt(i);
   }
   return bytes;
+}
+
+function ensureUniqueName(name: string, used: Map<string, number>): string {
+  const count = used.get(name) ?? 0;
+  used.set(name, count + 1);
+  if (count === 0) return name;
+  const stem = name.replace(/\.png$/, '');
+  return `${stem}_${count + 1}.png`;
 }
 
 async function loadPageIntoCanvas(
@@ -66,12 +68,35 @@ function downloadBlob(blob: Blob, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
+async function restoreCanvas(
+  canvas: fabric.Canvas,
+  snapshot: string,
+  activeObj: fabric.Object | undefined,
+): Promise<void> {
+  return new Promise((resolve) => {
+    canvas.loadFromJSON(JSON.parse(snapshot), () => {
+      clearPreviewCache(canvas);
+      restoreTextObjectsEditability(canvas);
+      if (activeObj) canvas.setActiveObject(activeObj);
+      canvas.renderAll();
+      resolve();
+    });
+  });
+}
+
 /** 客户端批量导出：逐行逐页渲染，打包为单个 ZIP 下载 */
 export async function batchExportZip(
   canvas: fabric.Canvas,
   options: BatchExportOptions,
-): Promise<{ success: number; failed: number }> {
-  const { pages, rows, fileNamePrefix = 'label', onProgress } = options;
+): Promise<BatchExportResult> {
+  const {
+    pages,
+    rows,
+    fileNamePrefix = 'label',
+    fileNameTemplate,
+    onProgress,
+    signal,
+  } = options;
   const snapshot = JSON.stringify(canvasToJSON(canvas));
   const activeObj = canvas.getActiveObject();
   canvas.discardActiveObject();
@@ -81,50 +106,66 @@ export async function batchExportZip(
   let success = 0;
   let failed = 0;
   let progress = 0;
+  let cancelled = false;
+  const usedNames = new Map<string, number>();
 
-  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-    for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-      const page = pages[pageIndex];
-      const templateSize = { width: page.width, height: page.height };
-      const background = page.background || '#ffffff';
-      const fileName = buildFileName(rowIndex, pageIndex, pages.length, fileNamePrefix);
-
-      try {
-        await loadPageIntoCanvas(canvas, page);
-        await applyPreviewToCanvas(canvas, rows[rowIndex]);
-        const dataURL = await exportTemplateToDataURL(canvas, templateSize, {
-          format: 'png',
-          multiplier: 2,
-          transparentBackground: false,
-          background,
-        });
-        zip.file(fileName, dataURLToUint8Array(dataURL), { binary: true });
-        success++;
-      } catch {
-        failed++;
+  try {
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      if (signal?.aborted) {
+        cancelled = true;
+        break;
       }
 
-      progress++;
-      onProgress?.(progress, total);
+      for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
+        if (signal?.aborted) {
+          cancelled = true;
+          break;
+        }
+
+        const page = pages[pageIndex];
+        const templateSize = { width: page.width, height: page.height };
+        const background = page.background || '#ffffff';
+        const baseName = buildExportFileName(
+          rowIndex,
+          pageIndex,
+          pages.length,
+          fileNamePrefix,
+          rows[rowIndex],
+          fileNameTemplate,
+        );
+        const fileName = ensureUniqueName(baseName, usedNames);
+
+        try {
+          await loadPageIntoCanvas(canvas, page);
+          await applyPreviewToCanvas(canvas, rows[rowIndex]);
+          const dataURL = await exportTemplateToDataURL(canvas, templateSize, {
+            format: 'png',
+            multiplier: 2,
+            transparentBackground: false,
+            background,
+          });
+          zip.file(fileName, dataURLToUint8Array(dataURL), { binary: true });
+          success++;
+        } catch {
+          failed++;
+        }
+
+        progress++;
+        onProgress?.(progress, total);
+      }
+
+      if (cancelled) break;
     }
+
+    if (!cancelled && success > 0) {
+      const blob = await zip.generateAsync({ type: 'blob' });
+      downloadBlob(blob, `${fileNamePrefix}.zip`);
+    }
+  } finally {
+    await restoreCanvas(canvas, snapshot, activeObj ?? undefined);
   }
 
-  if (success > 0) {
-    const blob = await zip.generateAsync({ type: 'blob' });
-    downloadBlob(blob, `${fileNamePrefix}.zip`);
-  }
-
-  await new Promise<void>((resolve) => {
-    canvas.loadFromJSON(JSON.parse(snapshot), () => {
-      clearPreviewCache(canvas);
-      restoreTextObjectsEditability(canvas);
-      if (activeObj) canvas.setActiveObject(activeObj);
-      canvas.renderAll();
-      resolve();
-    });
-  });
-
-  return { success, failed };
+  return { success, failed, cancelled };
 }
 
 /** @deprecated 使用 batchExportZip */

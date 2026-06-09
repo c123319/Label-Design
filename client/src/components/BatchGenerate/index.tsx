@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { Modal, Button, Progress, Alert, List, message } from 'antd';
+import { useState, useCallback, useRef } from 'react';
+import { Modal, Button, Progress, Alert, List, Input, message } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
 import { validateBindings } from '@/utils/renderTemplate';
@@ -18,8 +18,11 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
 
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressDetail, setProgressDetail] = useState<{ current: number; total: number } | null>(null);
+  const [fileNameTemplate, setFileNameTemplate] = useState('');
   const [validation, setValidation] = useState<ReturnType<typeof validateBindings> | null>(null);
   const [useCloud, setUseCloud] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const runValidation = useCallback(() => {
     if (!canvas || !dataSource) {
@@ -51,30 +54,50 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
     return updated;
   };
 
+  const handleCancelGenerate = () => {
+    abortRef.current?.abort();
+  };
+
   const handleGenerateLocal = async () => {
     const result = runValidation();
     if (!result?.valid || !canvas || !dataSource) return;
 
+    const controller = new AbortController();
+    abortRef.current = controller;
     setGenerating(true);
     setProgress(0);
+    setProgressDetail(null);
+
     try {
       const exportPages = syncCurrentPage();
       const totalImages = dataSource.rows.length * exportPages.length;
-      const { success, failed } = await batchExportZip(canvas, {
+      const { success, failed, cancelled } = await batchExportZip(canvas, {
         pages: exportPages,
         rows: dataSource.rows,
         fileNamePrefix: templateName || 'label',
-        onProgress: (cur, total) => setProgress(Math.round((cur / total) * 100)),
+        fileNameTemplate: fileNameTemplate.trim() || undefined,
+        signal: controller.signal,
+        onProgress: (cur, total) => {
+          setProgress(Math.round((cur / total) * 100));
+          setProgressDetail({ current: cur, total });
+        },
       });
-      message.success(
-        `ZIP 导出完成：成功 ${success} 张${failed > 0 ? `，失败 ${failed} 张` : ''}（共 ${totalImages} 张）`,
-      );
-      onClose();
+
+      if (cancelled) {
+        message.info(`已取消导出（已完成 ${success} 张）`);
+      } else {
+        message.success(
+          `ZIP 导出完成：成功 ${success} 张${failed > 0 ? `，失败 ${failed} 张` : ''}（共 ${totalImages} 张）`,
+        );
+        onClose();
+      }
     } catch {
       message.error('批量生成失败');
     } finally {
+      abortRef.current = null;
       setGenerating(false);
       setProgress(0);
+      setProgressDetail(null);
     }
   };
 
@@ -124,15 +147,29 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
     }
   };
 
+  const handleModalClose = () => {
+    if (generating) {
+      handleCancelGenerate();
+      return;
+    }
+    onClose();
+  };
+
   return (
     <Modal
       title="批量生成"
       open={open}
-      onCancel={onClose}
+      onCancel={handleModalClose}
       className="batch-generate-modal"
       width={520}
       footer={[
-        <Button key="cancel" onClick={onClose} disabled={generating}>取消</Button>,
+        generating ? (
+          <Button key="cancel-gen" danger onClick={handleCancelGenerate}>
+            停止导出
+          </Button>
+        ) : (
+          <Button key="cancel" onClick={onClose}>取消</Button>
+        ),
         <Button key="validate" onClick={handleValidate} disabled={generating || !dataSource}>
           校验
         </Button>,
@@ -164,12 +201,24 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
           <Alert
             type="info"
             showIcon
-            message={`数据源：${dataSource.fileName || '本地数据'}，共 ${dataSource.totalRows} 条`}
+            message={`数据源：${dataSource.fileName || '本地数据'}，共 ${dataSource.totalRows} 条${pages.length > 1 ? `，${pages.length} 页模板` : ''}`}
             style={{ marginBottom: 16 }}
           />
         ) : (
           <Alert type="warning" showIcon message="尚未上传数据源" style={{ marginBottom: 16 }} />
         )}
+
+        <div className="batch-filename-field">
+          <label htmlFor="batch-filename-template">文件命名（可选）</label>
+          <Input
+            id="batch-filename-template"
+            placeholder="{{字段名}}_标签，留空则使用模板名_001"
+            value={fileNameTemplate}
+            onChange={(e) => setFileNameTemplate(e.target.value)}
+            disabled={generating}
+            size="small"
+          />
+        </div>
 
         {validation && (
           <div className="validation-result">
@@ -209,7 +258,11 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
         {generating && (
           <div className="batch-progress">
             <Progress percent={progress} status="active" />
-            <span>正在生成… {progress}%</span>
+            <span>
+              {progressDetail
+                ? `正在生成第 ${progressDetail.current} / ${progressDetail.total} 张…`
+                : `正在生成… ${progress}%`}
+            </span>
           </div>
         )}
       </div>

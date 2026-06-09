@@ -4,6 +4,17 @@
   margin-bottom: 16px;
 }
 
+.batch-generate-modal .batch-filename-field {
+  margin-bottom: 16px;
+}
+
+.batch-generate-modal .batch-filename-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary, #4b5563);
+  margin-bottom: 6px;
+}
+
 .batch-generate-modal .validation-result {
   margin-bottom: 16px;
 }
