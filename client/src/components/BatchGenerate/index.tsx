@@ -4,12 +4,26 @@ import { ThunderboltOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
 import { validateBindings } from '@/utils/renderTemplate';
 import { batchExportZip } from '@/utils/batchExport';
-import { renderJobApi } from '@/services/api';
+import { renderJobApi, templateApi, dataSourceApi } from '@/services/api';
 import './styles.css';
 
 interface BatchGenerateProps {
   open: boolean;
   onClose: () => void;
+}
+
+interface CloudJobStatus {
+  progress?: number;
+  status?: string;
+  success?: number;
+  failed?: number;
+  total?: number;
+  errors?: { rowIndex: number; message: string }[];
+}
+
+function parseJobStatus(res: unknown): CloudJobStatus | null {
+  const wrapped = res as { data?: CloudJobStatus };
+  return wrapped.data ?? (res as CloudJobStatus);
 }
 
 const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
@@ -103,47 +117,99 @@ const BatchGenerate: React.FC<BatchGenerateProps> = ({ open, onClose }) => {
 
   const handleGenerateCloud = async () => {
     const result = runValidation();
-    if (!result?.valid || !dataSource) return;
+    if (!result?.valid || !dataSource || !canvas) return;
 
     setGenerating(true);
     setProgress(0);
+    setProgressDetail(null);
+
     try {
+      const exportPages = syncCurrentPage();
+      const template = useEditorStore.getState().exportAsJSON();
+      template.pages = exportPages;
+
+      let templateId = currentTemplateId || template.id;
+      try {
+        if (currentTemplateId) {
+          await templateApi.update(templateId, template);
+        } else {
+          const created = await templateApi.create(template) as
+            | { data?: { id: string }; id?: string }
+            | { id: string };
+          const newId = 'data' in created && created.data?.id
+            ? created.data.id
+            : (created as { id?: string }).id;
+          if (newId) {
+            templateId = newId;
+            useEditorStore.setState({ currentTemplateId: newId });
+          }
+        }
+      } catch {
+        message.warning('模板同步失败，将使用快照提交任务');
+      }
+
+      let dataSourceId = dataSource.id;
+      try {
+        const dsRes = await dataSourceApi.upload(
+          dataSource.fileName || 'data.json',
+          dataSource.rows,
+          templateId,
+        ) as { data?: { id: string }; id?: string };
+        const serverId = dsRes.data?.id ?? dsRes.id;
+        if (serverId) {
+          dataSourceId = serverId;
+          useEditorStore.getState().setDataSource({ ...dataSource, id: serverId });
+        }
+      } catch {
+        message.warning('数据源同步失败，使用已有 ID');
+      }
+
       const res = await renderJobApi.create({
-        templateId: currentTemplateId || 'local',
-        dataSourceId: dataSource.id,
+        templateId,
+        dataSourceId,
+        templateSnapshot: { ...template, id: templateId },
         outputType: 'PNG',
         range: { type: 'all' },
+        options: {
+          fileNamePrefix: templateName || 'label',
+          fileNameTemplate: fileNameTemplate.trim() || undefined,
+        },
       });
       const jobId = (res as { data?: { jobId: string } }).data?.jobId
         ?? (res as { jobId?: string }).jobId;
       if (!jobId) throw new Error('no job id');
 
+      const totalImages = dataSource.rows.length * exportPages.length;
       let done = false;
       while (!done) {
-        await new Promise((r) => setTimeout(r, 1000));
-        const statusRes = await renderJobApi.getStatus(jobId) as {
-          data?: { progress?: number; status?: string; downloadUrl?: string | null };
-          progress?: number;
-          status?: string;
-          downloadUrl?: string | null;
-        };
-        const job = statusRes.data ?? statusRes;
+        await new Promise((r) => setTimeout(r, 800));
+        const statusRes = await renderJobApi.getStatus(jobId);
+        const job = parseJobStatus(statusRes);
+        if (!job) continue;
         setProgress(Number(job.progress) || 0);
+        const completed = (Number(job.success) || 0) + (Number(job.failed) || 0);
+        setProgressDetail({ current: completed, total: job.total ?? totalImages });
+
         if (job.status === 'COMPLETED') {
           done = true;
-          if (job.downloadUrl) {
-            window.open(job.downloadUrl, '_blank');
-          }
-          message.success('批量生成完成');
+          await renderJobApi.download(jobId, templateName || 'label');
+          const failed = Number(job.failed) || 0;
+          message.success(
+            `云端生成完成：成功 ${job.success ?? 0} 张${failed > 0 ? `，失败 ${failed} 张` : ''}`,
+          );
           onClose();
         } else if (job.status === 'FAILED') {
-          throw new Error('任务失败');
+          const errMsg = job.errors?.[0]?.message ?? '任务失败';
+          throw new Error(errMsg);
         }
       }
-    } catch {
-      message.error('云端批量生成失败，请使用本地下载');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '云端批量生成失败';
+      message.error(msg);
     } finally {
       setGenerating(false);
+      setProgress(0);
+      setProgressDetail(null);
     }
   };
 

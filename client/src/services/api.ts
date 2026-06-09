@@ -64,13 +64,31 @@ export const renderJobApi = {
     templateId: string;
     dataSourceId: string;
     outputType?: string;
-    range?: { type: string };
-    options?: Record<string, unknown>;
+    range?: { type: string; from?: number; to?: number };
+    options?: {
+      fileNamePrefix?: string;
+      fileNameTemplate?: string;
+      multiplier?: number;
+    };
+    templateSnapshot?: ITemplate;
   }) =>
-    api.post<unknown, IApiResponse<{ jobId: string }>>('/render/jobs', data),
+    api.post<unknown, IApiResponse<{ jobId: string; status: string }>>('/render/jobs', data),
 
   getStatus: (jobId: string) =>
     api.get<unknown, IApiResponse<IRenderJob>>(`/render/jobs/${jobId}`),
+
+  download: async (jobId: string, fileName: string) => {
+    const res = await axios.get(`/api/render/jobs/${jobId}/download`, {
+      responseType: 'blob',
+    });
+    const blob = res.data as Blob;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileName}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
 
 // ── 批量生成 ──

@@ -9,6 +9,7 @@ import {
   truncateText,
 } from '@/utils/renderTemplate';
 import type { IDataSource } from '@shared/types/datasource';
+import type { IApiResponse } from '@shared/types/api';
 import { dataSourceApi } from '@/services/api';
 import * as XLSX from 'xlsx';
 import './styles.css';
@@ -97,12 +98,26 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
     return false;
   }, []);
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (rawData.length === 0) return;
 
     const fields = buildFieldsFromColumns(columns, rawData[0]);
+    let dataSourceId = `ds_local_${Date.now()}`;
+
+    if (currentTemplateId) {
+      try {
+        const res = await dataSourceApi.upload(fileName, rawData, currentTemplateId) as
+          | IApiResponse<IDataSource>
+          | IDataSource;
+        const serverDs = 'data' in res && res.data ? res.data : (res as IDataSource);
+        if (serverDs?.id) dataSourceId = serverDs.id;
+      } catch {
+        message.warning('数据源已绑定本地，云端同步失败');
+      }
+    }
+
     const dataSource: IDataSource = {
-      id: `ds_${Date.now()}`,
+      id: dataSourceId,
       fileName,
       fileType,
       fields,
@@ -113,10 +128,6 @@ const DataImport: React.FC<DataImportProps> = ({ open, onClose }) => {
 
     setDataSource(dataSource);
     useEditorStore.getState().setImportedData(rawData);
-
-    if (currentTemplateId) {
-      dataSourceApi.upload(fileName, rawData, currentTemplateId).catch(() => {});
-    }
 
     message.success(`已绑定数据源：${rawData.length} 条`);
     onClose();
