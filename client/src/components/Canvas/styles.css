@@ -12,4 +12,11 @@
   right: 0;
   bottom: 0;
   overflow: hidden;
+  background: #f0f0f0;
+}
+
+/* Fabric 容器铺满视口，不再撑出模板尺寸 */
+.canvas-wrapper .canvas-container {
+  width: 100% !important;
+  height: 100% !important;
 }

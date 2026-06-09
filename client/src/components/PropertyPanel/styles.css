@@ -59,3 +59,24 @@
   padding: 0 8px;
   height: 28px;
 }
+
+.property-panel .align-btns {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.property-panel .align-btns .ant-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.property-panel .align-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #bfbfbf;
+}

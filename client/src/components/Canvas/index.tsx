@@ -3,45 +3,28 @@ import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
 import ContextMenu from './ContextMenu';
 import Ruler from '@/components/Ruler';
+import {
+  PX_PER_MM,
+  applyCanvasViewportTransform,
+  getFabricRenderContext,
+  getGridIntervalMm,
+} from '@/utils/canvasMetrics';
+import {
+  drawTemplateBackground,
+  fitCanvasToContainer,
+  resizeCanvasToViewport,
+} from '@/utils/canvasViewport';
 import './styles.css';
-
-/** 根据缩放级别自适应网格间距（px） */
-function getAdaptiveGridSize(zoom: number): number {
-  const PX_PER_MM = 300 / 25.4;
-  const candidates = [PX_PER_MM * 1, PX_PER_MM * 2, PX_PER_MM * 5, PX_PER_MM * 10, PX_PER_MM * 20, PX_PER_MM * 50];
-  for (const size of candidates) {
-    if (size * zoom >= 40) return size;
-  }
-  return PX_PER_MM * 100;
-}
-
-/** 计算初始 fit zoom 并居中画布内容 */
-function fitCanvasToContainer(canvas: fabric.Canvas) {
-  const el = canvas.getElement();
-  const container = el?.parentElement?.parentElement;
-  if (!container) return;
-
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
-  const tw = canvas.getWidth();
-  const th = canvas.getHeight();
-
-  const zoom = Math.min((cw - 40) / tw, (ch - 40) / th, 1);
-  const panX = (cw - tw * zoom) / 2;
-  const panY = (ch - th * zoom) / 2;
-
-  canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
-  useEditorStore.setState({ zoom });
-}
 
 const CanvasEditor: React.FC = () => {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<fabric.Canvas | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const {
     setCanvas, setActiveObject, setActiveObjects,
     templateSize, pages, currentPageIndex,
-    showGrid, saveHistory,
+    showGrid, saveHistory, canvasTool, canvas,
   } = useEditorStore();
 
   /** 初始化 Fabric.js 画布 */
@@ -53,39 +36,54 @@ const CanvasEditor: React.FC = () => {
     }
 
     const canvas = new fabric.Canvas(canvasElRef.current, {
-      width: templateSize.width,
-      height: templateSize.height,
-      backgroundColor: '#ffffff',
+      width: wrapperRef.current?.clientWidth || 800,
+      height: wrapperRef.current?.clientHeight || 600,
+      backgroundColor: '',
       selection: true,
       preserveObjectStacking: true,
     });
 
-    // 动态网格：在 after:render 中用 Canvas 2D API 绘制
-    canvas.on('after:render', () => {
+    // 模板背景：仅填充模板区域，视口其余部分透出灰色工作区
+    canvas.on('before:render', (opt: fabric.IEvent & { ctx?: CanvasRenderingContext2D }) => {
+      const renderCtx = opt.ctx;
+      const fc = getFabricRenderContext(canvas);
+      if (!renderCtx || renderCtx !== fc.contextContainer) return;
+
+      const state = useEditorStore.getState();
+      const bg = state.pages[state.currentPageIndex]?.background || '#ffffff';
+      drawTemplateBackground(canvas, state.templateSize, bg);
+    });
+
+    // 动态网格：在 after:render 中用 Canvas 2D API 绘制（与标尺共用 mm 刻度）
+    canvas.on('after:render', (opt: fabric.IEvent & { ctx?: CanvasRenderingContext2D }) => {
       if (!useEditorStore.getState().showGrid) return;
+      const renderCtx = opt.ctx;
+      const fc = getFabricRenderContext(canvas);
+      if (!renderCtx || renderCtx !== fc.contextContainer) return;
 
-      const ctx = canvas.getContext();
-      const vpt = canvas.viewportTransform;
-      if (!vpt) return;
-
-      const fabricZoom = vpt[0];
-      const canvasWidth = canvas.getWidth();
-      const canvasHeight = canvas.getHeight();
-
-      const gridSize = getAdaptiveGridSize(fabricZoom);
+      const { templateSize: size } = useEditorStore.getState();
+      const ctx = fc.contextContainer;
+      const canvasWidth = size.width;
+      const canvasHeight = size.height;
+      const gridStepMm = getGridIntervalMm(canvas.getZoom());
+      const maxMmX = canvasWidth / PX_PER_MM;
+      const maxMmY = canvasHeight / PX_PER_MM;
 
       ctx.save();
-      ctx.transform(vpt[0], vpt[1], vpt[2], vpt[3], vpt[4], vpt[5]);
+      const zoom = applyCanvasViewportTransform(ctx, canvas);
+      const retina = fc.getRetinaScaling();
 
       ctx.strokeStyle = '#e8e8e8';
-      ctx.lineWidth = 1 / fabricZoom;
+      ctx.lineWidth = 1 / (zoom * retina);
       ctx.beginPath();
 
-      for (let x = 0; x <= canvasWidth; x += gridSize) {
+      for (let mm = 0; mm <= maxMmX + 0.001; mm += gridStepMm) {
+        const x = mm * PX_PER_MM;
         ctx.moveTo(x, 0);
         ctx.lineTo(x, canvasHeight);
       }
-      for (let y = 0; y <= canvasHeight; y += gridSize) {
+      for (let mm = 0; mm <= maxMmY + 0.001; mm += gridStepMm) {
+        const y = mm * PX_PER_MM;
         ctx.moveTo(0, y);
         ctx.lineTo(canvasWidth, y);
       }
@@ -136,18 +134,33 @@ const CanvasEditor: React.FC = () => {
       useEditorStore.getState().setMousePosition(null);
     });
 
-    // Alt + 拖拽平移
+    // 拖拽平移（拖拽工具 或 Alt + 拖拽）
     let isPanning = false;
     let lastPosX = 0;
     let lastPosY = 0;
 
+    const applyCanvasTool = (tool: 'select' | 'pan') => {
+      if (tool === 'pan') {
+        canvas.selection = false;
+        canvas.defaultCursor = 'grab';
+        canvas.hoverCursor = 'grab';
+      } else {
+        canvas.selection = true;
+        canvas.defaultCursor = 'default';
+        canvas.hoverCursor = 'move';
+      }
+    };
+
+    applyCanvasTool(useEditorStore.getState().canvasTool);
+
     canvas.on('mouse:down', (opt) => {
-      if (opt.e.altKey) {
+      const tool = useEditorStore.getState().canvasTool;
+      if (tool === 'pan' || opt.e.altKey) {
         isPanning = true;
         canvas.selection = false;
         lastPosX = opt.e.clientX;
         lastPosY = opt.e.clientY;
-        canvas.defaultCursor = 'grab';
+        canvas.defaultCursor = 'grabbing';
       }
     });
     canvas.on('mouse:move', (opt) => {
@@ -161,22 +174,29 @@ const CanvasEditor: React.FC = () => {
       }
     });
     canvas.on('mouse:up', () => {
+      if (!isPanning) return;
       isPanning = false;
-      canvas.selection = true;
-      canvas.defaultCursor = 'default';
+      const tool = useEditorStore.getState().canvasTool;
+      canvas.defaultCursor = tool === 'pan' ? 'grab' : 'default';
+      canvas.selection = tool === 'select';
     });
 
     canvasRef.current = canvas;
     setCanvas(canvas);
 
+    resizeCanvasToViewport(canvas);
+
     // 加载当前页数据，加载完成后 fit to container
     const page = pages[currentPageIndex];
     if (page && page.objects && page.objects.length > 0) {
-      canvas.loadFromJSON({ objects: page.objects, background: page.background || '#ffffff' }, () => {
-        fitCanvasToContainer(canvas);
+      canvas.loadFromJSON({ objects: page.objects }, () => {
+        canvas.setBackgroundColor('', () => {});
+        fitCanvasToContainer(canvas, templateSize);
+        useEditorStore.setState({ zoom: canvas.getZoom() });
       });
     } else {
-      fitCanvasToContainer(canvas);
+      fitCanvasToContainer(canvas, templateSize);
+      useEditorStore.setState({ zoom: canvas.getZoom() });
     }
 
     return canvas;
@@ -194,16 +214,53 @@ const CanvasEditor: React.FC = () => {
     };
   }, [initCanvas]);
 
-  // 模板尺寸变化时重新设置并重新 fit
+  // 视口尺寸变化时同步 canvas 大小
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper || !canvas) return;
+
+    const onResize = () => {
+      if (!canvasRef.current) return;
+      if (resizeCanvasToViewport(canvasRef.current)) {
+        fitCanvasToContainer(canvasRef.current, useEditorStore.getState().templateSize);
+        useEditorStore.setState({ zoom: canvasRef.current.getZoom() });
+        canvasRef.current.requestRenderAll();
+      }
+    };
+
+    onResize();
+    const ro = new ResizeObserver(onResize);
+    ro.observe(wrapper);
+    window.addEventListener('resize', onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
+  }, [canvas, templateSize.width, templateSize.height]);
+
+  // 模板尺寸变化时重新 fit
   useEffect(() => {
     if (canvasRef.current) {
-      canvasRef.current.setDimensions({
-        width: templateSize.width,
-        height: templateSize.height,
-      });
-      fitCanvasToContainer(canvasRef.current);
+      fitCanvasToContainer(canvasRef.current, templateSize);
+      useEditorStore.setState({ zoom: canvasRef.current.getZoom() });
+      canvasRef.current.requestRenderAll();
     }
   }, [templateSize]);
+
+  // 切换选中 / 拖拽工具
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (canvasTool === 'pan') {
+      canvas.selection = false;
+      canvas.defaultCursor = 'grab';
+      canvas.hoverCursor = 'grab';
+    } else {
+      canvas.selection = true;
+      canvas.defaultCursor = 'default';
+      canvas.hoverCursor = 'move';
+    }
+  }, [canvasTool]);
 
   // 网格可见性变化 → 触发重绘
   useEffect(() => {
@@ -216,7 +273,7 @@ const CanvasEditor: React.FC = () => {
     <ContextMenu>
       <div className="canvas-container">
         <Ruler />
-        <div className="canvas-wrapper">
+        <div className="canvas-wrapper" ref={wrapperRef}>
           <canvas ref={canvasElRef} />
         </div>
       </div>

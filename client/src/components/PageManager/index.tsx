@@ -12,13 +12,13 @@ const PageManager: React.FC = () => {
   const saveCurrentPage = useCallback(() => {
     if (!canvas) return;
     const json = canvas.toJSON();
+    const { pages, currentPageIndex, templateSize } = useEditorStore.getState();
     const pageData = {
-      width: canvas.getWidth(),
-      height: canvas.getHeight(),
-      background: (canvas.backgroundColor as string) || '#ffffff',
+      width: templateSize.width,
+      height: templateSize.height,
+      background: pages[currentPageIndex]?.background || '#ffffff',
       objects: (json.objects || []) as any[],
     };
-    const { pages, currentPageIndex } = useEditorStore.getState();
     const updated = [...pages];
     updated[currentPageIndex] = pageData;
     useEditorStore.setState({ pages: updated });
@@ -34,12 +34,13 @@ const PageManager: React.FC = () => {
       const targetPage = useEditorStore.getState().pages[index];
       if (canvas && targetPage) {
         canvas.clear();
-        canvas.setBackgroundColor(targetPage.background || '#ffffff', () => {});
         if (targetPage.objects && targetPage.objects.length > 0) {
           canvas.loadFromJSON({ objects: targetPage.objects }, () => {
+            canvas.setBackgroundColor('', () => {});
             canvas.renderAll();
           });
         } else {
+          canvas.setBackgroundColor('', () => {});
           canvas.renderAll();
         }
       }

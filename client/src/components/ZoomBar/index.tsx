@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { ZoomInOutlined, ZoomOutOutlined, ExpandOutlined } from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
+import { fitCanvasToContainer } from '@/utils/canvasViewport';
 import './styles.css';
 
 const ZoomBar: React.FC = () => {
@@ -18,16 +19,8 @@ const ZoomBar: React.FC = () => {
 
   const handleFit = useCallback(() => {
     if (!canvas) return;
-    const el = canvas.getElement();
-    const container = el?.parentElement?.parentElement;
-    if (!container) return;
-    const scaleX = (container.clientWidth - 40) / templateSize.width;
-    const scaleY = (container.clientHeight - 40) / templateSize.height;
-    const zoom = Math.round(Math.min(scaleX, scaleY, 1) * 100) / 100;
-    const panX = (container.clientWidth - templateSize.width * zoom) / 2;
-    const panY = (container.clientHeight - templateSize.height * zoom) / 2;
-    canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
-    setZoom(zoom);
+    fitCanvasToContainer(canvas, templateSize);
+    setZoom(canvas.getZoom());
   }, [canvas, templateSize, setZoom]);
 
   const handleEditSubmit = useCallback(() => {

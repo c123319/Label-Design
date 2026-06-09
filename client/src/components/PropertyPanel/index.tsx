@@ -10,10 +10,21 @@ import {
   ArrowUpOutlined,
   ArrowDownOutlined,
   ToTopOutlined,
+  AlignLeftOutlined,
+  AlignRightOutlined,
+  AlignCenterOutlined,
 } from '@ant-design/icons';
 import { fabric } from 'fabric';
 import { useEditorStore } from '@/store/useEditorStore';
+import { alignSelection } from '@/utils/alignObjects';
 import './styles.css';
+
+/** 垂直居中 icon */
+const AlignVIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+    <rect x="1" y="3" width="14" height="1.5" /><rect x="5" y="6.5" width="6" height="6" rx="0.5" /><rect x="1" y="13.5" width="14" height="1.5" />
+  </svg>
+);
 
 const FONT_FAMILIES = [
   { value: 'SimSun, serif', label: '宋体' },
@@ -26,8 +37,20 @@ const FONT_FAMILIES = [
 ];
 
 const PropertyPanel: React.FC = () => {
-  const { canvas, activeObject } = useEditorStore();
+  const { canvas, activeObject, activeObjects, templateSize, saveHistory } = useEditorStore();
   const [objProps, setObjProps] = useState<Record<string, any>>({});
+
+  const hasMultiple = activeObjects.length > 1;
+
+  const align = useCallback(
+    (dir: 'left' | 'right' | 'top' | 'bottom' | 'centerH' | 'centerV') => {
+      if (!canvas) return;
+      if (alignSelection(canvas, dir, templateSize.width, templateSize.height)) {
+        saveHistory();
+      }
+    },
+    [canvas, templateSize.width, templateSize.height, saveHistory],
+  );
 
   /** 从选中对象刷新属性 */
   const refreshProps = useCallback(() => {
@@ -201,6 +224,34 @@ const PropertyPanel: React.FC = () => {
               onChange={(v) => updateProp('opacity', v)}
             />
           </div>
+        </div>
+      </div>
+
+      {/* ── 对齐（多选） ── */}
+      <div className="panel-section">
+        <div className="section-title">对齐</div>
+        <div className="align-btns">
+          <Tooltip title={hasMultiple ? '左对齐' : '对齐画布左侧'}>
+            <Button size="small" onClick={() => align('left')} icon={<AlignLeftOutlined />} />
+          </Tooltip>
+          <Tooltip title={hasMultiple ? '水平居中' : '对齐画布水平中心'}>
+            <Button size="small" onClick={() => align('centerH')} icon={<AlignCenterOutlined />} />
+          </Tooltip>
+          <Tooltip title={hasMultiple ? '右对齐' : '对齐画布右侧'}>
+            <Button size="small" onClick={() => align('right')} icon={<AlignRightOutlined />} />
+          </Tooltip>
+          <Tooltip title={hasMultiple ? '上对齐' : '对齐画布顶部'}>
+            <Button size="small" onClick={() => align('top')} icon={<VerticalAlignTopOutlined />} />
+          </Tooltip>
+          <Tooltip title={hasMultiple ? '垂直居中' : '对齐画布垂直中心'}>
+            <Button size="small" onClick={() => align('centerV')} icon={<AlignVIcon />} />
+          </Tooltip>
+          <Tooltip title={hasMultiple ? '下对齐' : '对齐画布底部'}>
+            <Button size="small" onClick={() => align('bottom')} icon={<VerticalAlignBottomOutlined />} />
+          </Tooltip>
+        </div>
+        <div className="align-hint">
+          {hasMultiple ? '多选：元素之间互相对齐' : '单选：相对整个画布对齐'}
         </div>
       </div>
 

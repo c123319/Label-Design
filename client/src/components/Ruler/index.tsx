@@ -136,7 +136,7 @@ function drawHorizontalRuler(
     ctx.stroke();
 
     // 主刻度数字
-    if (isMajor && mm >= -0.01) {
+    if (isMajor) {
       ctx.fillStyle = LABEL_COLOR;
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';
@@ -220,7 +220,7 @@ function drawVerticalRuler(
     ctx.stroke();
 
     // 主刻度数字（垂直标尺文字旋转）
-    if (isMajor && mm >= -0.01) {
+    if (isMajor) {
       ctx.fillStyle = LABEL_COLOR;
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';

@@ -30,12 +30,11 @@ const Toolbar: React.FC = () => {
   const [barcodeValue, setBarcodeValue] = useState('{{barcode_data}}');
   const [barcodeFormat, setBarcodeFormat] = useState<BarcodeFormat>('CODE128');
 
-  const { canvas, sidebarCollapsed, toggleSidebar } = useEditorStore();
+  const { canvas, sidebarCollapsed, toggleSidebar, templateSize } = useEditorStore();
 
   const getCenter = useCallback(() => {
-    if (!canvas) return { left: 200, top: 150 };
-    return { left: canvas.getWidth() / 2, top: canvas.getHeight() / 2 };
-  }, [canvas]);
+    return { left: templateSize.width / 2, top: templateSize.height / 2 };
+  }, [templateSize.width, templateSize.height]);
 
   const addObj = useCallback((obj: fabric.Object, canvas: fabric.Canvas) => {
     canvas.add(obj);

@@ -6,6 +6,7 @@ import {
   ImportOutlined,
   PlusOutlined,
   FolderOpenOutlined,
+  CloudUploadOutlined,
 } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import CanvasEditor from '@/components/Canvas';
@@ -17,8 +18,9 @@ import ZoomBar from '@/components/ZoomBar';
 import DataImport from '@/components/DataImport';
 import TemplateManager from '@/components/TemplateManager';
 import { useEditorStore } from '@/store/useEditorStore';
+import { useFilesystemStore } from '@/store/useFilesystemStore';
 import { templateApi } from '@/services/api';
-import { localTemplateStorage } from '@/services/localTemplateStorage';
+import { fileSystemStorage } from '@/services/fileSystemStorage';
 import './App.css';
 
 const SIZE_PRESETS = [
@@ -47,6 +49,13 @@ function App() {
     selectAll, groupSelected, ungroupSelected, undo, redo,
   } = useEditorStore();
 
+  const { directoryName, isConnected } = useFilesystemStore();
+
+  // 启动时检查文件夹连接
+  useEffect(() => {
+    useFilesystemStore.getState().checkConnection();
+  }, []);
+
   // 键盘快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,7 +65,7 @@ function App() {
       if (e.key === 'Delete') { e.preventDefault(); store.deleteSelected(); }
       if (e.ctrlKey && e.key === 'z' && !e.shiftKey) { e.preventDefault(); store.undo(); }
       if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'z')) { e.preventDefault(); store.redo(); }
-      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleSave(); }
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); handleDownload(); }
       if (e.ctrlKey && e.key === 'c') { e.preventDefault(); store.copySelected(); }
       if (e.ctrlKey && e.key === 'v') { e.preventDefault(); store.pasteObject(); }
       if (e.ctrlKey && e.key === 'd') { e.preventDefault(); store.duplicateSelected(); }
@@ -78,24 +87,44 @@ function App() {
     message.success(`已创建模板: ${newTemplateName}`);
   }, [selectedPreset, customWidth, customHeight, newTemplateName, setTemplateName, setTemplateSize]);
 
+  const handleDownload = useCallback(() => {
+    const template = exportAsJSON();
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${template.name || 'template'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    message.success('模板已下载');
+  }, [exportAsJSON]);
+
   const handleSave = useCallback(async () => {
     const template = exportAsJSON();
-    // 使用已有的 currentTemplateId 或保持生成的新 ID
     const id = currentTemplateId || template.id;
     const templateToSave = { ...template, id };
-    let localOk = false;
-    let cloudOk = false;
 
-    // 1. 保存到本地（总是执行）
     try {
-      localTemplateStorage.save(templateToSave);
-      localOk = true;
-      setCurrentTemplateId(id);
+      if (isConnected) {
+        const permitted = await fileSystemStorage.verifyPermission();
+        if (permitted) {
+          await fileSystemStorage.save(templateToSave);
+          setCurrentTemplateId(id);
+          message.success('已保存到本地');
+          return;
+        }
+      }
+      message.warning('未连接本地文件夹，请先在模板管理中选择文件夹');
     } catch {
-      // 本地存储失败（空间不足等）
+      message.error('保存失败');
     }
+  }, [exportAsJSON, currentTemplateId, setCurrentTemplateId, isConnected]);
 
-    // 2. 保存到云端（尝试执行）
+  const handleSaveToCloud = useCallback(async () => {
+    const template = exportAsJSON();
+    const id = currentTemplateId || template.id;
+    const templateToSave = { ...template, id };
+
     try {
       if (currentTemplateId) {
         await templateApi.update(id, templateToSave);
@@ -103,22 +132,11 @@ function App() {
         await templateApi.create(templateToSave);
         setCurrentTemplateId(id);
       }
-      cloudOk = true;
+      message.success('已保存到云端');
     } catch {
-      // 云端不可用
+      message.error('云端保存失败');
     }
-
-    // 3. 反馈
-    if (localOk && cloudOk) {
-      message.success('已保存到本地和云端');
-    } else if (localOk) {
-      message.warning('已保存到本地（云端不可用）');
-    } else if (cloudOk) {
-      message.success('已保存到云端（本地存储失败）');
-    } else {
-      message.error('保存失败');
-    }
-  }, [exportAsJSON, templateName, currentTemplateId, setCurrentTemplateId]);
+  }, [exportAsJSON, currentTemplateId, setCurrentTemplateId]);
 
   const handleExport = useCallback((format: 'png' | 'jpg', multiplier: number) => {
     if (!canvas) return;
@@ -152,9 +170,21 @@ function App() {
           <span className="logo">Label Design</span>
           <input className="template-name" value={templateName} onChange={(e) => setTemplateName(e.target.value)} />
           <div className="header-actions">
+            {isConnected && directoryName && (
+              <Tooltip title={`模板将保存到: ${directoryName}`}>
+                <span style={{ fontSize: 12, color: '#8c8c8c', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FolderOpenOutlined /> {directoryName}
+                </span>
+              </Tooltip>
+            )}
             <Button size="small" icon={<PlusOutlined />} onClick={() => setNewTemplateOpen(true)}>新建</Button>
             <Button size="small" icon={<FolderOpenOutlined />} onClick={() => setTemplateManagerOpen(true)}>模板</Button>
-            <Button size="small" icon={<SaveOutlined />} onClick={handleSave}>保存</Button>
+            <Dropdown menu={{ items: [
+              { key: 'folder', label: '保存到本地文件夹', icon: <FolderOpenOutlined />, onClick: handleSave },
+              { key: 'cloud', label: '保存到云端', icon: <CloudUploadOutlined />, onClick: handleSaveToCloud },
+            ] }}>
+              <Button size="small" icon={<SaveOutlined />} onClick={handleDownload}>保存 ▾</Button>
+            </Dropdown>
             <Dropdown menu={{ items: exportMenuItems }}>
               <Button size="small" icon={<DownloadOutlined />}>导出 ▾</Button>
             </Dropdown>

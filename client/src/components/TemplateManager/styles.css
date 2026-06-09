@@ -46,3 +46,23 @@
 .template-manager .ant-tabs-nav {
   margin-bottom: 12px;
 }
+
+.template-manager .folder-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.template-manager .folder-banner .folder-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #389e0d;
+  font-weight: 500;
+}
