@@ -43,8 +43,6 @@
   color: #bfbfbf;
 }
 
-.template-manager .import-section {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f0f0f0;
+.template-manager .ant-tabs-nav {
+  margin-bottom: 12px;
 }

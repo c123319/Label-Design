@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Delete } from '@nestjs/common';
 import { TemplateService } from './template.service';
 
 @Controller('api/templates')
@@ -18,6 +18,11 @@ export class TemplateController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.templateService.findOne(id);
+  }
+
+  @Put(':id')
+  update(@Param('id') id: string, @Body() body: any) {
+    return this.templateService.update(id, body);
   }
 
   @Delete(':id')

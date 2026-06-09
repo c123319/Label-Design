@@ -54,10 +54,16 @@ interface EditorState {
   templateSize: { width: number; height: number };
   setTemplateName: (name: string) => void;
   setTemplateSize: (size: { width: number; height: number }) => void;
+  currentTemplateId: string | null;
+  setCurrentTemplateId: (id: string | null) => void;
 
   // ── 缩放 ──
   zoom: number;
   setZoom: (zoom: number) => void;
+
+  // ── 画布工具 ──
+  canvasTool: 'select' | 'pan';
+  setCanvasTool: (tool: 'select' | 'pan') => void;
 
   // ── 鼠标位置（标尺用） ──
   mousePosition: { x: number; y: number } | null;
@@ -238,20 +244,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   templateSize: { ...DEFAULT_SIZE },
   setTemplateName: (templateName) => set({ templateName }),
   setTemplateSize: (size) => set({ templateSize: size }),
+  currentTemplateId: null,
+  setCurrentTemplateId: (currentTemplateId) => set({ currentTemplateId }),
 
   // ── 缩放 ──
   zoom: 1,
   setZoom: (zoom) => {
-    const { canvas } = get();
+    const { canvas, templateSize } = get();
     if (canvas) {
-      // 仅用 Fabric.js viewportTransform，不做 CSS 尺寸变更
-      const vpt = canvas.viewportTransform!;
-      const centerX = canvas.getWidth() / 2;
-      const centerY = canvas.getHeight() / 2;
+      const centerX = templateSize.width / 2;
+      const centerY = templateSize.height / 2;
       canvas.zoomToPoint(new fabric.Point(centerX, centerY), zoom);
     }
     set({ zoom });
   },
+
+  // ── 画布工具 ──
+  canvasTool: 'select',
+  setCanvasTool: (canvasTool) => set({ canvasTool }),
 
   // ── 鼠标位置 ──
   mousePosition: null,
@@ -270,7 +280,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   saveHistory: () => {
     const { canvas, historyStack, historyIndex } = get();
     if (!canvas) return;
-    const json = JSON.stringify(canvas.toJSON());
+    const data = canvas.toJSON() as Record<string, unknown>;
+    delete data.background;
+    delete data.backgroundImage;
+    const json = JSON.stringify(data);
     const newStack = historyStack.slice(0, historyIndex + 1);
     newStack.push(json);
     if (newStack.length > 50) newStack.shift();
@@ -282,6 +295,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canvas || historyIndex <= 0) return;
     const prev = historyStack[historyIndex - 1];
     canvas.loadFromJSON(JSON.parse(prev), () => {
+      canvas.setBackgroundColor('', () => {});
       canvas.renderAll();
       set({ historyIndex: historyIndex - 1 });
     });
@@ -292,6 +306,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canvas || historyIndex >= historyStack.length - 1) return;
     const next = historyStack[historyIndex + 1];
     canvas.loadFromJSON(JSON.parse(next), () => {
+      canvas.setBackgroundColor('', () => {});
       canvas.renderAll();
       set({ historyIndex: historyIndex + 1 });
     });
@@ -306,7 +321,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       updatedPages[currentPageIndex] = {
         width: templateSize.width,
         height: templateSize.height,
-        background: canvas.backgroundColor as string || '#ffffff',
+        background: pages[currentPageIndex]?.background || '#ffffff',
         objects: (json.objects || []) as any[],
       };
     }
@@ -325,10 +340,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       templateName: template.name,
       pages: template.pages,
       currentPageIndex: 0,
+      templateSize: {
+        width: template.pages[0]?.width ?? DEFAULT_SIZE.width,
+        height: template.pages[0]?.height ?? DEFAULT_SIZE.height,
+      },
+      currentTemplateId: template.id,
     });
     if (canvas && template.pages.length > 0) {
       const page = template.pages[0];
-      canvas.loadFromJSON({ objects: page.objects, background: page.background }, () => {
+      canvas.loadFromJSON({ objects: page.objects }, () => {
+        canvas.setBackgroundColor('', () => {});
         canvas.renderAll();
       });
     }

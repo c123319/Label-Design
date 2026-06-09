@@ -18,6 +18,7 @@ import DataImport from '@/components/DataImport';
 import TemplateManager from '@/components/TemplateManager';
 import { useEditorStore } from '@/store/useEditorStore';
 import { templateApi } from '@/services/api';
+import { localTemplateStorage } from '@/services/localTemplateStorage';
 import './App.css';
 
 const SIZE_PRESETS = [
@@ -41,6 +42,7 @@ function App() {
   const {
     templateName, setTemplateName, templateSize, setTemplateSize,
     canvas, exportAsJSON,
+    currentTemplateId, setCurrentTemplateId,
     copySelected, pasteObject, duplicateSelected, deleteSelected,
     selectAll, groupSelected, ungroupSelected, undo, redo,
   } = useEditorStore();
@@ -61,6 +63,8 @@ function App() {
       if (e.ctrlKey && e.key === 'a') { e.preventDefault(); store.selectAll(); }
       if (e.ctrlKey && e.key === 'g' && !e.shiftKey) { e.preventDefault(); store.groupSelected(); }
       if (e.ctrlKey && e.shiftKey && e.key === 'g') { e.preventDefault(); store.ungroupSelected(); }
+      if (e.key === 'v' && !e.ctrlKey) { store.setCanvasTool('select'); }
+      if (e.key === 'h' && !e.ctrlKey) { store.setCanvasTool('pan'); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -76,20 +80,45 @@ function App() {
 
   const handleSave = useCallback(async () => {
     const template = exportAsJSON();
+    // 使用已有的 currentTemplateId 或保持生成的新 ID
+    const id = currentTemplateId || template.id;
+    const templateToSave = { ...template, id };
+    let localOk = false;
+    let cloudOk = false;
+
+    // 1. 保存到本地（总是执行）
     try {
-      await templateApi.create(template);
-      message.success('模板已保存');
+      localTemplateStorage.save(templateToSave);
+      localOk = true;
+      setCurrentTemplateId(id);
     } catch {
-      const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${templateName}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      message.success('模板已导出为 JSON');
+      // 本地存储失败（空间不足等）
     }
-  }, [exportAsJSON, templateName]);
+
+    // 2. 保存到云端（尝试执行）
+    try {
+      if (currentTemplateId) {
+        await templateApi.update(id, templateToSave);
+      } else {
+        await templateApi.create(templateToSave);
+        setCurrentTemplateId(id);
+      }
+      cloudOk = true;
+    } catch {
+      // 云端不可用
+    }
+
+    // 3. 反馈
+    if (localOk && cloudOk) {
+      message.success('已保存到本地和云端');
+    } else if (localOk) {
+      message.warning('已保存到本地（云端不可用）');
+    } else if (cloudOk) {
+      message.success('已保存到云端（本地存储失败）');
+    } else {
+      message.error('保存失败');
+    }
+  }, [exportAsJSON, templateName, currentTemplateId, setCurrentTemplateId]);
 
   const handleExport = useCallback((format: 'png' | 'jpg', multiplier: number) => {
     if (!canvas) return;

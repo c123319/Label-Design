@@ -1,8 +1,16 @@
 import { useState, useCallback, useRef } from 'react';
-import { Modal, Button, Upload, message, Empty } from 'antd';
-import { DeleteOutlined, DownloadOutlined, UploadOutlined, FolderOpenOutlined } from '@ant-design/icons';
+import { Modal, Button, Tabs, message, Empty, Tooltip } from 'antd';
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  UploadOutlined,
+  FolderOpenOutlined,
+  CloudUploadOutlined,
+  CloudDownloadOutlined,
+} from '@ant-design/icons';
 import { useEditorStore } from '@/store/useEditorStore';
 import { templateApi } from '@/services/api';
+import { localTemplateStorage } from '@/services/localTemplateStorage';
 import type { ITemplate } from '@shared/types/template';
 import './styles.css';
 
@@ -12,24 +20,25 @@ interface TemplateManagerProps {
 }
 
 const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
-  const { loadFromJSON, exportAsJSON } = useEditorStore();
-  const [templates, setTemplates] = useState<ITemplate[]>([]);
+  const { loadFromJSON, exportAsJSON, setCurrentTemplateId } = useEditorStore();
+  const [localTemplates, setLocalTemplates] = useState<ITemplate[]>([]);
+  const [cloudTemplates, setCloudTemplates] = useState<ITemplate[]>([]);
   const importRef = useRef<HTMLInputElement>(null);
 
-  /** 加载模板列表 */
-  const loadTemplates = useCallback(async () => {
-    try {
-      const res = await templateApi.list();
-      setTemplates((res as any).data || (Array.isArray(res) ? res : []));
-    } catch {
-      setTemplates([]);
-    }
+  /** 加载本地模板列表 */
+  const loadLocalTemplates = useCallback(() => {
+    setLocalTemplates(localTemplateStorage.list());
   }, []);
 
-  /** 打开时加载列表 */
-  const handleOpen = useCallback((visible: boolean) => {
-    if (visible) loadTemplates();
-  }, [loadTemplates]);
+  /** 加载云端模板列表 */
+  const loadCloudTemplates = useCallback(async () => {
+    try {
+      const res = await templateApi.list();
+      setCloudTemplates((res as any).data || (Array.isArray(res) ? res : []));
+    } catch {
+      setCloudTemplates([]);
+    }
+  }, []);
 
   /** 加载模板到画布 */
   const handleLoad = useCallback((template: ITemplate) => {
@@ -38,19 +47,70 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
     onClose();
   }, [loadFromJSON, onClose]);
 
-  /** 删除模板 */
-  const handleDelete = useCallback(async (id: string, e: React.MouseEvent) => {
+  /** 删除本地模板 */
+  const handleDeleteLocal = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    localTemplateStorage.remove(id);
+    loadLocalTemplates();
+    message.success('已删除本地模板');
+  }, [loadLocalTemplates]);
+
+  /** 删除云端模板 */
+  const handleDeleteCloud = useCallback(async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       await templateApi.delete(id);
-      setTemplates((prev) => prev.filter((t) => t.id !== id));
-      message.success('已删除');
+      loadCloudTemplates();
+      message.success('已删除云端模板');
     } catch {
       message.error('删除失败');
     }
-  }, []);
+  }, [loadCloudTemplates]);
 
-  /** 导出当前模板为 JSON */
+  /** 上传本地模板到云端 */
+  const handleUploadToCloud = useCallback(async (template: ITemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await templateApi.create(template);
+      loadCloudTemplates();
+      message.success(`已上传 "${template.name}" 到云端`);
+    } catch {
+      message.error('上传失败');
+    }
+  }, [loadCloudTemplates]);
+
+  /** 下载云端模板到本地 */
+  const handleDownloadToLocal = useCallback((template: ITemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    localTemplateStorage.save(template);
+    loadLocalTemplates();
+    message.success(`已下载 "${template.name}" 到本地`);
+  }, [loadLocalTemplates]);
+
+  /** 导入本地 JSON 模板文件 */
+  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const template = JSON.parse(event.target?.result as string) as ITemplate;
+        if (!template.pages || !template.name) {
+          message.error('无效的模板文件');
+          return;
+        }
+        localTemplateStorage.save(template);
+        loadLocalTemplates();
+        message.success(`已导入模板: ${template.name}`);
+      } catch {
+        message.error('JSON 解析失败');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  }, [loadLocalTemplates]);
+
+  /** 导出当前模板为 JSON 文件下载 */
   const handleExportJSON = useCallback(() => {
     const template = exportAsJSON();
     const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
@@ -63,28 +123,35 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
     message.success('模板已导出');
   }, [exportAsJSON]);
 
-  /** 导入本地 JSON 模板 */
-  const handleImport = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const template = JSON.parse(event.target?.result as string) as ITemplate;
-        if (!template.pages || !template.name) {
-          message.error('无效的模板文件');
-          return;
-        }
-        loadFromJSON(template);
-        message.success(`已导入模板: ${template.name}`);
-        onClose();
-      } catch {
-        message.error('JSON 解析失败');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  }, [loadFromJSON, onClose]);
+  /** Tab 切换时加载对应数据 */
+  const handleTabChange = useCallback((key: string) => {
+    if (key === 'local') loadLocalTemplates();
+    else loadCloudTemplates();
+  }, [loadLocalTemplates, loadCloudTemplates]);
+
+  /** 打开时加载本地列表 */
+  const handleAfterOpenChange = useCallback((visible: boolean) => {
+    if (visible) {
+      loadLocalTemplates();
+      loadCloudTemplates();
+    }
+  }, [loadLocalTemplates, loadCloudTemplates]);
+
+  /** 渲染模板列表项 */
+  const renderTemplateItem = (
+    template: ITemplate,
+    actions: React.ReactNode,
+  ) => (
+    <div key={template.id} className="template-item" onClick={() => handleLoad(template)}>
+      <div className="info">
+        <div className="name">{template.name}</div>
+        <div className="meta">
+          {template.pages?.length || 0} 页 · {template.updatedAt ? new Date(template.updatedAt).toLocaleString() : ''}
+        </div>
+      </div>
+      <div className="actions">{actions}</div>
+    </div>
+  );
 
   return (
     <Modal
@@ -98,7 +165,7 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
       ]}
       width={560}
       className="template-manager"
-      afterOpenChange={handleOpen}
+      afterOpenChange={handleAfterOpenChange}
     >
       <input
         ref={importRef}
@@ -108,39 +175,88 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
         onChange={handleImport}
       />
 
-      {templates.length === 0 ? (
-        <div className="empty-state">
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无已保存的模板"
-          >
-            <p style={{ fontSize: 12, color: '#8c8c8c' }}>
-              点击"导出当前"保存当前画布为模板，或"导入 JSON"加载本地模板文件
-            </p>
-          </Empty>
-        </div>
-      ) : (
-        <div className="template-list">
-          {templates.map((t) => (
-            <div key={t.id} className="template-item" onClick={() => handleLoad(t)}>
-              <div className="info">
-                <div className="name">{t.name}</div>
-                <div className="meta">
-                  {t.pages?.length || 0} 页 · {t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}
-                </div>
+      <Tabs
+        defaultActiveKey="local"
+        onChange={handleTabChange}
+        items={[
+          {
+            key: 'local',
+            label: '📁 本地模板',
+            children: localTemplates.length === 0 ? (
+              <div className="empty-state">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="暂无本地模板"
+                >
+                  <p style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    点击"保存"按钮将当前画布保存到本地，或"导入 JSON"加载模板文件
+                  </p>
+                </Empty>
               </div>
-              <div className="actions">
-                <Button
-                  size="small"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={(e) => handleDelete(t.id, e)}
-                />
+            ) : (
+              <div className="template-list">
+                {localTemplates.map((t) =>
+                  renderTemplateItem(t, (
+                    <>
+                      <Tooltip title="上传到云端">
+                        <Button
+                          size="small"
+                          icon={<CloudUploadOutlined />}
+                          onClick={(e) => handleUploadToCloud(t, e)}
+                        />
+                      </Tooltip>
+                      <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => handleDeleteLocal(t.id, e)}
+                      />
+                    </>
+                  )),
+                )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ),
+          },
+          {
+            key: 'cloud',
+            label: '☁️ 云端模板',
+            children: cloudTemplates.length === 0 ? (
+              <div className="empty-state">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="暂无云端模板"
+                >
+                  <p style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    将本地模板上传到云端，或点击"保存"同步到云端
+                  </p>
+                </Empty>
+              </div>
+            ) : (
+              <div className="template-list">
+                {cloudTemplates.map((t) =>
+                  renderTemplateItem(t, (
+                    <>
+                      <Tooltip title="下载到本地">
+                        <Button
+                          size="small"
+                          icon={<CloudDownloadOutlined />}
+                          onClick={(e) => handleDownloadToLocal(t, e)}
+                        />
+                      </Tooltip>
+                      <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => handleDeleteCloud(t.id, e)}
+                      />
+                    </>
+                  )),
+                )}
+              </div>
+            ),
+          },
+        ]}
+      />
     </Modal>
   );
 };

@@ -26,6 +26,9 @@ export const templateApi = {
   get: (id: string) =>
     api.get<unknown, ITemplate>(`/templates/${id}`),
 
+  update: (id: string, data: Partial<ITemplate>) =>
+    api.put<unknown, IApiResponse<ITemplate>>(`/templates/${id}`, data),
+
   delete: (id: string) =>
     api.delete<unknown, IApiResponse<{ success: boolean }>>(`/templates/${id}`),
 };
