@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build outputs
+client/dist/
+server/dist/
+
+# Runtime / database files
+server/prisma/*.db
+server/prisma/*.db-journal
+server/prisma/*.db-shm
+server/prisma/*.db-wal
+
+# Version control
+.git/
+.gitignore
+
+# Editor / OS
+.DS_Store
+*.swp
+*.log
+
+# Environment files (never bake secrets into the image)
+.env
+client/.env
+server/.env
+
+# Docs / tests
+docs/
+*.test.ts
+*.spec.ts
