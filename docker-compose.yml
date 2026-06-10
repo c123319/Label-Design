@@ -6,7 +6,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: file:./prisma/data.db
+      DATABASE_URL: file:/app/prisma/data.db
       NODE_ENV: production
     volumes:
       # Persist the SQLite database across container restarts.

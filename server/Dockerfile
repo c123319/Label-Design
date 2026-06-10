@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build
 
-# Copy workspace manifests first to maximise Docker layer cache
+# Copy workspace manifests first to maximize Docker layer cache
 COPY package*.json ./
 COPY client/package.json ./client/
 COPY server/ ./server/
