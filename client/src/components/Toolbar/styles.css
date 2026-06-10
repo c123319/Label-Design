@@ -136,6 +136,39 @@
   font-size: 13px;
 }
 
+/* 素材源切换（官方 / 私有） */
+.asset-source-switch {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 3px;
+  background: var(--bg-page, #f5f7fa);
+  border-radius: var(--radius-md, 6px);
+}
+
+.asset-source-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #4b5563);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.asset-source-btn:hover {
+  color: var(--text-primary, #1f2937);
+}
+
+.asset-source-btn.active {
+  background: var(--bg-panel, #fff);
+  color: var(--color-primary, #1677ff);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+}
+
 .panel-select {
   width: 100%;
   margin-bottom: 12px;

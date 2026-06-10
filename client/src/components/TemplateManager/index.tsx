@@ -15,6 +15,8 @@ import { templateApi } from '@/services/api';
 import { fileSystemStorage } from '@/services/fileSystemStorage';
 import { templateStoreService } from '@/services/templateStore';
 import { useTemplateStore } from '@/hooks/useTemplateStore';
+import { useStoreTemplate } from '@/hooks/useStore';
+import { BACKEND_STORE_ENABLED } from '@/config/templateStore';
 import type { ITemplate } from '@shared/types/template';
 import type { ITemplateStoreEntry } from '@shared/types/templateStore';
 import './styles.css';
@@ -35,6 +37,11 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
   const importRef = useRef<HTMLInputElement>(null);
 
   const templateStore = useTemplateStore(open && activeTab === 'library');
+  const backendStore = useStoreTemplate('backend', open && activeTab === 'private');
+
+  const [privateFilter, setPrivateFilter] = useState('all');
+  const [privateSearch, setPrivateSearch] = useState('');
+  const [loadingPrivateId, setLoadingPrivateId] = useState<string | null>(null);
 
   const {
     directoryName, isConnected, isSupported, isConnecting,
@@ -66,6 +73,27 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
     const byCategory = templateStore.filterByCategory(libraryFilter);
     return templateStoreService.search(byCategory, librarySearch);
   }, [templateStore.entries, libraryFilter, librarySearch]);
+
+  const privateEntries = useMemo(() => {
+    const byCategory = backendStore.filterByCategory(privateFilter);
+    return templateStoreService.search(byCategory, privateSearch);
+  }, [backendStore.entries, privateFilter, privateSearch]);
+
+  /** 从私有模板库（自部署后端）加载 */
+  const handleLoadFromBackend = useCallback(async (entry: ITemplateStoreEntry) => {
+    setLoadingPrivateId(entry.id);
+    try {
+      const template = await backendStore.loadTemplate(entry);
+      if (template) {
+        loadFromJSON(template);
+        setCurrentTemplateId(template.id);
+        message.success(`已加载模板: ${template.name}`);
+        onClose();
+      }
+    } finally {
+      setLoadingPrivateId(null);
+    }
+  }, [backendStore, loadFromJSON, setCurrentTemplateId, onClose]);
 
   /** 从远程模板库加载 */
   const handleLoadFromStore = useCallback(async (entry: ITemplateStoreEntry) => {
@@ -209,6 +237,66 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
     }
   }, [loadLocalTemplates, loadCloudTemplates]);
 
+  /**
+   * 渲染模板库卡片网格（GitHub / 私有库共用）。
+   * store 接口与 useTemplateStore / useStoreTemplate 返回值一致。
+   */
+  const renderLibraryGrid = (
+    store: ReturnType<typeof useTemplateStore>,
+    entries: ITemplateStoreEntry[],
+    loadingId: string | null,
+    onLoad: (entry: ITemplateStoreEntry) => void,
+  ) => {
+    if (store.loading) {
+      return <div className="library-loading"><Spin tip="加载模板库..." /></div>;
+    }
+    if (store.error) {
+      return (
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={store.error}>
+          <Button onClick={() => store.reload()}>重新加载</Button>
+        </Empty>
+      );
+    }
+    if (entries.length === 0) {
+      return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配模板" />;
+    }
+    return (
+      <div className="library-grid">
+        {entries.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            className="library-card"
+            disabled={loadingId === entry.id}
+            onClick={() => onLoad(entry)}
+          >
+            <div className="library-card-thumb">
+              <img
+                src={store.getThumbnailUrl(entry)}
+                alt={entry.name}
+                loading="lazy"
+              />
+            </div>
+            <div className="library-card-info">
+              <div className="library-card-name">{entry.name}</div>
+              <div className="library-card-meta">
+                {entry.width}×{entry.height}{entry.unit}
+                {entry.featured && <span className="library-badge">精选</span>}
+              </div>
+              {entry.tags && entry.tags.length > 0 && (
+                <div className="library-card-tags">
+                  {entry.tags.slice(0, 3).map((tag) => (
+                    <span key={tag} className="library-tag">{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   /** 渲染模板列表项 */
   const renderTemplateItem = (
     template: ITemplate,
@@ -284,51 +372,67 @@ const TemplateManager: React.FC<TemplateManagerProps> = ({ open, onClose }) => {
                 {templateStore.version && (
                   <div className="library-version">版本 {templateStore.version}</div>
                 )}
-                {templateStore.loading ? (
-                  <div className="library-loading"><Spin tip="加载模板库..." /></div>
-                ) : templateStore.error ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={templateStore.error}
-                  >
-                    <Button onClick={() => templateStore.reload()}>重新加载</Button>
-                  </Empty>
-                ) : libraryEntries.length === 0 ? (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无匹配模板" />
-                ) : (
-                  <div className="library-grid">
-                    {libraryEntries.map((entry) => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        className="library-card"
-                        disabled={loadingLibraryId === entry.id}
-                        onClick={() => handleLoadFromStore(entry)}
-                      >
-                        <div className="library-card-thumb">
-                          <img
-                            src={templateStore.getThumbnailUrl(entry)}
-                            alt={entry.name}
-                            loading="lazy"
-                          />
-                        </div>
-                        <div className="library-card-info">
-                          <div className="library-card-name">{entry.name}</div>
-                          <div className="library-card-meta">
-                            {entry.width}×{entry.height}{entry.unit}
-                            {entry.featured && <span className="library-badge">精选</span>}
-                          </div>
-                          {entry.tags && entry.tags.length > 0 && (
-                            <div className="library-card-tags">
-                              {entry.tags.slice(0, 3).map((tag) => (
-                                <span key={tag} className="library-tag">{tag}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                {renderLibraryGrid(
+                  templateStore,
+                  libraryEntries,
+                  loadingLibraryId,
+                  handleLoadFromStore,
+                )}
+              </>
+            ),
+          },
+          {
+            key: 'private',
+            label: '🔒 私有模板库',
+            children: !BACKEND_STORE_ENABLED ? (
+              <div className="empty-state">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="未启用私有模板库"
+                >
+                  <p style={{ fontSize: 12, color: '#8c8c8c' }}>
+                    部署后端服务并配置 VITE_BACKEND_STORE_BASE_URL 后可用
+                  </p>
+                </Empty>
+              </div>
+            ) : (
+              <>
+                <div className="library-toolbar">
+                  <Input
+                    prefix={<SearchOutlined />}
+                    placeholder="搜索模板"
+                    value={privateSearch}
+                    onChange={(e) => setPrivateSearch(e.target.value)}
+                    allowClear
+                  />
+                  <Select
+                    value={privateFilter}
+                    onChange={setPrivateFilter}
+                    loading={backendStore.loading}
+                    options={[
+                      { value: 'all', label: '全部' },
+                      ...backendStore.categories.map((c) => ({
+                        value: c.code,
+                        label: c.name,
+                      })),
+                    ]}
+                  />
+                  <Tooltip title="刷新私有模板库">
+                    <Button
+                      icon={<ReloadOutlined />}
+                      loading={backendStore.loading}
+                      onClick={() => backendStore.reload()}
+                    />
+                  </Tooltip>
+                </div>
+                {backendStore.version && (
+                  <div className="library-version">版本 {backendStore.version}</div>
+                )}
+                {renderLibraryGrid(
+                  backendStore,
+                  privateEntries,
+                  loadingPrivateId,
+                  handleLoadFromBackend,
                 )}
               </>
             ),

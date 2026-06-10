@@ -34,3 +34,7 @@ coverage/
 uploads/
 output/
 temp/
+
+# Prisma
+server/prisma/**/*.db
+server/prisma/**/*.db-journal

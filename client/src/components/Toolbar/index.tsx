@@ -16,8 +16,11 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { truncateText } from '@/utils/renderTemplate';
 import { useTemplateStore } from '@/hooks/useTemplateStore';
 import { useAssetStore } from '@/hooks/useAssetStore';
+import { useStoreAssets } from '@/hooks/useStore';
 import { templateStoreService } from '@/services/templateStore';
+import { BACKEND_STORE_ENABLED } from '@/config/templateStore';
 import type { IAssetCategory, IAssetEntry } from '@shared/types/templateStore';
+import type { StoreSourceId } from '@/services/store/types';
 import { useCanvasActions } from './useCanvasActions';
 import { NAV_ITEMS, type SidebarTab } from './constants';
 import './styles.css';
@@ -94,7 +97,11 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
   const { sidebarCollapsed, toggleSidebar, loadFromJSON, setCurrentTemplateId, dataSource } = useEditorStore();
   const actions = useCanvasActions();
   const templateStore = useTemplateStore(activeTab === 'template');
-  const assetStore = useAssetStore(activeTab === 'material');
+  const [assetSource, setAssetSource] = useState<StoreSourceId>('github');
+  const githubAssetStore = useAssetStore(activeTab === 'material' && assetSource === 'github');
+  const backendAssetStore = useStoreAssets('backend', activeTab === 'material' && assetSource === 'backend' && BACKEND_STORE_ENABLED);
+  // 当前生效的素材源 store（切换时引用不同实例，下方所有逻辑自动跟随）
+  const assetStore = assetSource === 'github' ? githubAssetStore : backendAssetStore;
 
   useEffect(() => {
     if (activeTab !== 'material' || assetStore.categories.length === 0) return;
@@ -380,6 +387,24 @@ const Toolbar: React.FC<ToolbarProps> = ({ onOpenDataImport }) => {
 
     return (
       <div className="panel-scroll">
+        {BACKEND_STORE_ENABLED && (
+          <div className="asset-source-switch">
+            <button
+              type="button"
+              className={`asset-source-btn${assetSource === 'github' ? ' active' : ''}`}
+              onClick={() => setAssetSource('github')}
+            >
+              官方素材
+            </button>
+            <button
+              type="button"
+              className={`asset-source-btn${assetSource === 'backend' ? ' active' : ''}`}
+              onClick={() => setAssetSource('backend')}
+            >
+              私有素材
+            </button>
+          </div>
+        )}
         <Input
           prefix={<SearchOutlined />}
           placeholder="输入关键词搜索"

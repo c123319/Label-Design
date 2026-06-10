@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Body, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { TemplateService } from './template.service';
 
 @Controller('api/templates')
@@ -28,5 +36,23 @@ export class TemplateController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.templateService.remove(id);
+  }
+
+  /** 保存模板元素 → 数据字段的绑定关系 */
+  @Post(':id/bindings')
+  saveBindings(
+    @Param('id') id: string,
+    @Body() body: { bindings: any[] },
+  ) {
+    return this.templateService.saveBindings(id, body.bindings ?? []);
+  }
+
+  /** 设置模板默认关联的数据源 */
+  @Put(':id/data-source')
+  setDataSource(
+    @Param('id') id: string,
+    @Body() body: { dataSourceId: string | null },
+  ) {
+    return this.templateService.setDataSource(id, body.dataSourceId ?? null);
   }
 }

@@ -99,11 +99,15 @@ template-store/
 
 | 文件 | 说明 |
 |------|------|
-| `client/src/config/templateStore.ts` | 仓库基础 URL 配置（`VITE_TEMPLATE_STORE_BASE_URL` 环境变量） |
-| `client/src/services/templateStore.ts` | 核心服务层：加载 manifest、categories、assets-manifest、模板 JSON，提供搜索与筛选 |
-| `client/src/utils/convertStoreTemplate.ts` | 将 template-store JSON 格式转换为应用内 `ITemplate` 格式（mm→px、条码/二维码预渲染） |
-| `client/src/hooks/useTemplateStore.ts` | React Hook：封装模板库加载状态 |
-| `client/src/hooks/useAssetStore.ts` | React Hook：封装素材库加载状态 |
+| `client/src/config/templateStore.ts` | 仓库基础 URL 配置（GitHub 源 + 后端源） |
+| `client/src/services/store/types.ts` | StoreProvider 接口抽象 |
+| `client/src/services/store/githubProvider.ts` | GitHub 仓库源实现 |
+| `client/src/services/store/backendProvider.ts` | 自部署后端源实现 |
+| `client/src/services/store/index.ts` | 源调度层（listStoreSources / getStoreProvider） |
+| `client/src/services/storeUtils.ts` | 源无关的筛选 / 搜索纯函数 |
+| `client/src/services/templateStore.ts` | GitHub 源兼容封装（历史代码引用） |
+| `client/src/hooks/useStore.ts` | 通用 Hook（useStoreTemplate / useStoreAssets，支持任意源） |
+| `client/src/utils/convertStoreTemplate.ts` | template-store JSON → ITemplate 转换（mm→px、条码预渲染） |
 
 ### 类型定义
 

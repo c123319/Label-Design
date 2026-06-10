@@ -43,9 +43,9 @@ export class RenderController {
   }
 
   @Get('jobs/:jobId/download')
-  downloadJob(@Param('jobId') jobId: string, @Res() res: Response) {
+  async downloadJob(@Param('jobId') jobId: string, @Res() res: Response) {
     try {
-      const { zipPath, fileName } = this.renderService.getJobZipPath(jobId);
+      const { zipPath, fileName } = await this.renderService.getJobZipPath(jobId);
       res.setHeader('Content-Type', 'application/zip');
       res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"`);
       createReadStream(zipPath).pipe(res);

@@ -32,6 +32,20 @@ export const templateApi = {
 
   delete: (id: string) =>
     api.delete<unknown, IApiResponse<{ success: boolean }>>(`/templates/${id}`),
+
+  /** 保存模板元素 → 数据字段的绑定关系 */
+  saveBindings: (id: string, bindings: any[]) =>
+    api.post<unknown, IApiResponse<{ success: boolean; count: number }>>(
+      `/templates/${id}/bindings`,
+      { bindings },
+    ),
+
+  /** 设置模板默认关联的数据源 */
+  setDataSource: (id: string, dataSourceId: string | null) =>
+    api.put<unknown, IApiResponse<{ success: boolean }>>(
+      `/templates/${id}/data-source`,
+      { dataSourceId },
+    ),
 };
 
 // ── 文件上传 ──
@@ -89,21 +103,6 @@ export const renderJobApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
-};
-
-// ── 批量生成 ──
-export const batchApi = {
-  generate: (data: { templateId: string; data: Record<string, string | number>[]; exportFormat?: string }) =>
-    api.post<unknown, IApiResponse<{ jobId: string }>>('/batch/generate', data),
-
-  getStatus: (jobId: string) =>
-    api.get<unknown, IApiResponse<{
-      jobId: string;
-      status: string;
-      total: number;
-      completed: number;
-      resultUrl: string | null;
-    }>>(`/batch/status/${jobId}`),
 };
 
 // ── 导出 ──

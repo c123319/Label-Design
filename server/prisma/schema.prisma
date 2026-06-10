@@ -1,0 +1,188 @@
+// Label Design - 数据持久化层
+//
+// 设计目标：默认 SQLite 内嵌（零依赖启动），通过环境变量可平滑切换到 PostgreSQL。
+// schema 字段类型刻意选了 SQLite / PostgreSQL 都兼容的标量，避免方言差异。
+
+datasource db {
+  // 默认 SQLite 内嵌（零依赖）。
+  // 切换到 PostgreSQL：把下一行改为 provider = "postgresql"，并把 DATABASE_URL 指向 PG 实例。
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  // 使用 Prisma 默认输出位置（node_modules/.prisma/client），
+  // 通过 @prisma/client 引用；避免 dist 构建产物路径问题。
+}
+
+// ───────────────────────────────────────────────
+// 模板
+// ───────────────────────────────────────────────
+
+model Template {
+  id          String   @id
+  name        String
+  description String?  @default("")
+  // 完整模板 JSON（pages[] + 元信息），JSON 字符串存储
+  templateJson String  @map("template_json")
+  canvasUnit  String?  @default("mm") @map("canvas_unit")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // 关联：模板默认绑定的数据源（阶段 C：打开模板可恢复数据源）
+  dataSourceId String? @map("data_source_id")
+  dataSource   DataSource? @relation(fields: [dataSourceId], references: [id], onDelete: SetNull)
+
+  bindings TemplateBinding[]
+  jobs     RenderJob[]
+
+  @@map("label_template")
+}
+
+// ───────────────────────────────────────────────
+// 数据源
+// ───────────────────────────────────────────────
+
+model DataSource {
+  id        String   @id
+  fileName  String   @map("file_name")
+  fileType  String   @map("file_type") // xlsx | csv | json | manual
+  // 字段定义（fieldCode/fieldName/fieldType/sampleValue）
+  fieldsJson String  @map("fields_json")
+  // 预览行（前 N 条），便于列表展示
+  previewJson String @map("preview_json")
+  totalRows  Int     @map("total_rows")
+  // 完整数据行。小数据量直接入库；大数据量建议改用 file_path 流式读取。
+  rowsJson   String  @map("rows_json")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  templates Template[]
+  jobs      RenderJob[]
+
+  @@map("label_data_source")
+}
+
+// ───────────────────────────────────────────────
+// 模板元素 ↔ 字段绑定关系
+// ───────────────────────────────────────────────
+
+model TemplateBinding {
+  id           String   @id @default(cuid())
+  templateId   String   @map("template_id")
+  // 元素在画布中的 id（前端生成）
+  elementId    String   @map("element_id")
+  elementType  String   @map("element_type") // text | barcode | qrcode | image
+  bindingType  String   @map("binding_type") // singleField | templateText
+  // 单字段绑定时使用
+  fieldCode    String?  @map("field_code")
+  // 多字段模板绑定时使用（含 {{field}} 模板字符串与字段列表）
+  templateText String?  @map("template_text")
+  defaultValue String?  @map("default_value")
+  // 扩展字段，预留二期（格式化、条件显示等）
+  extraJson    String?  @map("extra_json")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  template Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, elementId])
+  @@index([templateId])
+  @@map("label_template_binding")
+}
+
+// ───────────────────────────────────────────────
+// 渲染任务历史
+// ───────────────────────────────────────────────
+
+model RenderJob {
+  jobId       String   @id @map("job_id")
+  templateId  String?  @map("template_id")
+  dataSourceId String? @map("data_source_id")
+  outputType  String?  @map("output_type") // png | pdf | zip
+  status      String   @default("WAITING") // WAITING | PROCESSING | COMPLETED | FAILED
+  total       Int      @default(0)
+  success     Int      @default(0)
+  failed      Int      @default(0)
+  progress    Float    @default(0)
+  // errors[] 数组 JSON
+  errorsJson  String?  @map("errors_json")
+  // 下载信息（zipPath 服务器本地路径 / downloadUrl 对外 URL）
+  zipPath     String?  @map("zip_path")
+  zipFileName String?  @map("zip_file_name")
+  downloadUrl String?  @map("download_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  startedAt   DateTime? @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+
+  template  Template?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  dataSource DataSource? @relation(fields: [dataSourceId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("label_render_job")
+}
+
+// ───────────────────────────────────────────────
+// 私有模板库 / 素材库（自部署后端源）
+// 与 template-store GitHub 仓库的 manifest.json 字段对齐，
+// 前端 BackendStoreProvider 可直接转换为 ITemplateStoreEntry / IAssetEntry。
+// ───────────────────────────────────────────────
+
+model StoreTemplate {
+  id           String   @id
+  name         String
+  category     String
+  categoryName String   @map("category_name")
+  width        Int
+  height       Int
+  unit         String   @default("mm") // mm | px
+  // 缩略图：可以是上传后的相对 URL，也可以是绝对 URL
+  thumbnail    String
+  // 模板内容 JSON（schemaVersion "1.0" 格式，与 template-store/templates/*.json 一致）
+  templateJson String   @map("template_json")
+  tagsJson     String   @default("[]") @map("tags_json")
+  featured     Boolean  @default(false)
+  sort         Int      @default(0)
+  version      String   @default("1.0.0")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([featured])
+  @@map("label_store_template")
+}
+
+model StoreCategory {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  sort        Int      @default(0)
+  // collapsible 来自 IAssetCategory，控制前端折叠态
+  collapsible Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("label_store_category")
+}
+
+model StoreAsset {
+  id           String   @id @default(cuid())
+  name         String
+  category     String
+  // image | text | label
+  type         String
+  // 图片素材 URL（相对路径或绝对 URL）
+  url          String?
+  // 缩略图 URL，默认同 url
+  thumbnail    String?
+  // 文本/标签内容
+  content      String?
+  tagsJson     String   @default("[]") @map("tags_json")
+  sort         Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([type])
+  @@map("label_store_asset")
+}
