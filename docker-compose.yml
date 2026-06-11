@@ -1,0 +1,18 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:/app/prisma/data.db
+      NODE_ENV: production
+    volumes:
+      # Persist the SQLite database across container restarts.
+      # Switch to a PostgreSQL service block below when ready to scale out.
+      - db_data:/app/prisma
+    restart: unless-stopped
+
+volumes:
+  db_data:

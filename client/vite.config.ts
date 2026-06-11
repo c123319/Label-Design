@@ -67,4 +67,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-antd': ['antd', '@ant-design/icons'],
+          'vendor-fabric': ['fabric'],
+          'vendor-xlsx': ['xlsx'],
+          'vendor-qr': ['qrcode', 'jsbarcode'],
+        },
+      },
+    },
+  },
 });
